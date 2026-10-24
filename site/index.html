@@ -74,6 +74,7 @@ kbd{font:13px "JetBrains Mono",monospace;border:1px solid var(--rule);border-bot
 .shot{max-width:420px;justify-self:center;width:100%}
 .shot .frame{max-height:600px;-webkit-mask-image:linear-gradient(#000 82%,transparent);mask-image:linear-gradient(#000 82%,transparent)}
 .shot.wide{max-width:none}
+.whole .frame{max-height:none!important;height:auto!important;-webkit-mask-image:none!important;mask-image:none!important}
 .shot.wide .frame{max-height:none;-webkit-mask-image:none;mask-image:none}
 
 /* who */
@@ -95,6 +96,17 @@ kbd{font:13px "JetBrains Mono",monospace;border:1px solid var(--rule);border-bot
 .layout h2{font-size:clamp(28px,3.2vw,38px);letter-spacing:-.02em}
 .layout ul{color:var(--soft);padding-left:20px;margin:16px 0 0}
 .layout li{margin:6px 0}
+
+
+/* more */
+.more{border-top:1px solid var(--rule);padding:80px 0}
+.more h2{font-size:clamp(30px,3.6vw,42px);letter-spacing:-.02em}
+.more-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:48px 40px;margin-top:38px}
+.more-grid figure{margin:0}
+.more-grid .frame{height:300px;-webkit-mask-image:linear-gradient(#000 80%,transparent);mask-image:linear-gradient(#000 80%,transparent)}
+.more-grid .frame img{width:100%}
+.more-grid h3{font:600 18px "Public Sans",sans-serif;margin-top:18px}
+.more-grid p{color:var(--soft);margin:6px 0 0;font-size:16px}
 
 /* safe */
 .safe{border-top:1px solid var(--rule);padding:80px 0}
@@ -121,6 +133,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
   .q.flip .say{order:0}
   .hero{padding:16px 0 64px}
   .who-grid,.safe-grid{grid-template-columns:1fr;gap:28px}
+  .more-grid{grid-template-columns:1fr 1fr;gap:36px 24px}
   .with dl{grid-template-columns:1fr;gap:4px}
   .with dd{margin-bottom:14px}
   .top nav{gap:16px}
@@ -129,6 +142,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
   .wrap{padding:0 16px}
   .top nav a.hide-sm{display:none}
   .install{font-size:13px}
+  .more-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -234,6 +248,28 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
       </div>
       <figure class="shot"><div class="frame"><img src="img/ticket.webp" width="838" height="1600" loading="lazy" alt="The ticket form: a title and description, a checkbox to include the diff, Jira as the destination and a checkbox to also open a GitHub pull request."></div></figure>
     </article>
+
+    <article class="q flip">
+      <div class="say">
+        <blockquote>“Can a developer review the code first?”</blockquote>
+        <p class="who">Teams that ship through pull requests</p>
+        <p class="body">Open a draft pull request straight from the change or the preview bar. Alfred commits the edit to a new branch through GitHub, GitLab or Bitbucket and opens the request for review. Git isn't needed on the server, so it works on staging and hosted platforms too.</p>
+        <ul>
+          <li>Create the ticket and the pull request together, linked both ways.</li>
+          <li>Prefer to apply it yourself? Download the patch and run <code>git apply</code>.</li>
+        </ul>
+      </div>
+      <figure class="shot whole"><div class="frame"><img src="img/pull-request.webp" width="838" height="1000" loading="lazy" alt="The pull request form with a title and an Open pull request in GitHub button, and below it the confirmation that pull request #214 was opened on a new branch."></div></figure>
+    </article>
+
+    <article class="q">
+      <div class="say">
+        <blockquote>“This number looks wrong.”</blockquote>
+        <p class="who">Anyone, no AI needed</p>
+        <p class="body">Report a problem or ask for something in your own words. Alfred turns it into a ticket with a screenshot of the element and where it lives in the code: the route, the controller, the views and the components. If you asked about it first, the explanation and your questions go along too.</p>
+      </div>
+      <figure class="shot"><div class="frame"><img src="img/report.webp" width="838" height="1544" loading="lazy" alt="A report about the refund rate written in plain words, and the ticket Alfred prepared from it, ready to send to Jira."></div></figure>
+    </article>
   </div>
 </section>
 
@@ -267,6 +303,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
       <dt>Ticket trackers</dt><dd>Jira, GitHub Issues, GitLab, Linear, Trello, ClickUp and Asana, or your own. Without a tracker, copy the ticket as Markdown.</dd>
       <dt>Pull requests</dt><dd>Draft pull requests on GitHub, GitLab or Bitbucket, made through their APIs. Git isn't needed on the server.</dd>
       <dt>Multi-tenant apps</dt><dd>stancl/tenancy and spatie/laravel-multitenancy. Every explanation, change and ticket stays in its tenant.</dd>
+      <dt>Command line</dt><dd><code>php artisan alfred:doctor</code> checks your setup without printing secrets. <code>php artisan alfred:usage</code> shows what the AI used, by day, person or kind.</dd>
       <dt>Testers on staging</dt><dd>Visitors who aren't signed in can use Alfred on staging through a private access link, with their own rate limits. Never in production by default.</dd>
     </dl>
   </div>
@@ -286,6 +323,27 @@ footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
     </div>
   </section>
 </div>
+
+
+<section class="more">
+  <div class="wrap">
+    <h2>And the rest of the workflow</h2>
+    <div class="more-grid">
+      <figure><div class="frame"><img src="img/write-change.webp" width="838" height="1120" loading="lazy" alt="A change in write mode, with Apply to the code and Preview on this page buttons."></div>
+        <figcaption><h3>Apply and undo, on your machine</h3><p>In write mode, used locally, Apply writes the change to your code and reloads the page. Undo puts it back. Both refuse if the file changed in the meantime.</p></figcaption></figure>
+      <figure><div class="frame"><img src="img/applied.webp" width="1440" height="1800" loading="lazy" alt="The dashboard after applying the change, with the conversion rate shown as a green badge and a message offering Undo."></div>
+        <figcaption><h3>Applied, with a way back</h3><p>After the reload you see the result straight away, with Undo a click away.</p></figcaption></figure>
+      <figure><div class="frame"><img src="img/refine.webp" width="838" height="660" loading="lazy" alt="The Refine form, asking what should be different about the proposed change."></div>
+        <figcaption><h3>Refine until it's right</h3><p>Say what's off. Alfred sees its previous attempt and your note, and replaces the proposal with a new one. A preview that broke the page can be fixed in one click.</p></figcaption></figure>
+      <figure><div class="frame"><img src="img/history.webp" width="838" height="700" loading="lazy" alt="The history of an explanation: generated, follow-up added, verified."></div>
+        <figcaption><h3>Reviewed answers, with history</h3><p>Verify, edit or regenerate an explanation. Every version is kept and can be restored, and answers say when the code behind them has changed since.</p></figcaption></figure>
+      <figure><div class="frame"><img src="img/changes.webp" width="838" height="900" loading="lazy" alt="A list of recent changes with their status: proposed, applied, reverted, discarded."></div>
+        <figcaption><h3>Every change in one list</h3><p>See what was asked for, by whom, and where it stands: proposed, applied, undone or discarded.</p></figcaption></figure>
+      <figure class="whole"><div class="frame"><img src="img/ticket-done.webp" width="838" height="460" loading="lazy" alt="Confirmation that Jira ticket SHOP-142 was created and GitHub pull request #214 was opened."></div>
+        <figcaption><h3>Ticket and pull request together</h3><p>One click creates both, and each links to the other.</p></figcaption></figure>
+    </div>
+  </div>
+</section>
 
 <section class="safe">
   <div class="wrap">
