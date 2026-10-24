@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alfred for Laravel</title>
+<meta name="description" content="Point at anything in your Laravel app and ask how it is calculated, or ask for it to change. Alfred reads your code and answers in plain language.">
+<meta property="og:title" content="Alfred for Laravel">
+<meta property="og:description" content="Point at anything in your Laravel app and ask how it is calculated, or ask for it to change.">
+<meta property="og:image" content="img/explain.webp">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%231E5B47'/%3E%3Ctext x='16' y='22.5' font-family='Arial' font-weight='700' font-size='19' text-anchor='middle' fill='%23F2F4F1'%3E%3F%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F2F4F1; --surface:#FFFFFF; --ink:#18211D; --soft:#4A5751; --rule:#D5DDD7;
+  --livery:#1E5B47; --livery-ink:#F2F4F1; --brass:#A87322; --wash:#E3EBE5; --code:#18211D; --code-ink:#E3EBE5;
+  --shadow:0 1px 2px rgba(24,33,29,.06),0 12px 40px -12px rgba(24,33,29,.22);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#121915; --surface:#1A231E; --ink:#E6ECE8; --soft:#A3B2AA; --rule:#2C3832;
+  --livery:#4FA383; --livery-ink:#0E1411; --brass:#D9A44B; --wash:#1F2C25; --code:#0C110E; --code-ink:#D5E0DA;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 16px 44px -14px rgba(0,0,0,.7);
+}}
+:root[data-theme="dark"]{
+  --paper:#121915; --surface:#1A231E; --ink:#E6ECE8; --soft:#A3B2AA; --rule:#2C3832;
+  --livery:#4FA383; --livery-ink:#0E1411; --brass:#D9A44B; --wash:#1F2C25; --code:#0C110E; --code-ink:#D5E0DA;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 16px 44px -14px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.6 "Public Sans",system-ui,sans-serif}
+img{max-width:100%;height:auto;display:block}
+a{color:var(--livery);text-underline-offset:3px}
+a:focus-visible,button:focus-visible{outline:3px solid var(--brass);outline-offset:3px;border-radius:6px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+h1,h2,h3{font-family:"Bricolage Grotesque",system-ui,sans-serif;line-height:1.05;margin:0}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+.mark{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font:700 21px "Bricolage Grotesque",sans-serif}
+.mark i{width:30px;height:30px;border-radius:50%;background:var(--livery);color:var(--livery-ink);display:grid;place-items:center;font-style:normal;font-size:18px}
+.top nav{display:flex;gap:22px;font-size:15px}
+.top nav a{color:var(--soft);text-decoration:none}
+.top nav a:hover{color:var(--ink)}
+
+/* hero */
+.hero{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:56px;align-items:center;padding:40px 0 88px}
+.hero h1{font-size:clamp(44px,6.4vw,82px);font-weight:800;letter-spacing:-.035em}
+.hero p.lede{font-size:20px;color:var(--soft);margin:26px 0 30px;max-width:34ch}
+.install{display:flex;align-items:center;gap:10px;background:var(--code);color:var(--code-ink);border-radius:10px;padding:12px 12px 12px 18px;font:15px "JetBrains Mono",monospace;max-width:440px}
+.install code{flex:1;white-space:nowrap;overflow-x:auto}
+.install button{border:0;background:var(--livery);color:var(--livery-ink);font:600 13px "Public Sans",sans-serif;padding:7px 12px;border-radius:7px;cursor:pointer}
+.ctas{display:flex;gap:18px;margin-top:22px;font-weight:600}
+.hero figure{margin:0}
+.frame{border-radius:14px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--rule);background:var(--surface)}
+.hero figcaption{font-size:14px;color:var(--soft);margin-top:12px}
+kbd{font:13px "JetBrains Mono",monospace;border:1px solid var(--rule);border-bottom-width:2px;border-radius:5px;padding:1px 6px;background:var(--surface)}
+
+/* questions */
+.questions{border-top:1px solid var(--rule)}
+.intro{padding:72px 0 8px;max-width:640px}
+.intro h2{font-size:clamp(30px,3.6vw,42px);font-weight:700;letter-spacing:-.02em}
+.intro p{color:var(--soft);margin:14px 0 0}
+.q{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:64px;align-items:center;padding:64px 0;border-bottom:1px solid var(--rule)}
+.q:last-child{border-bottom:0}
+.q.flip .say{order:2}
+.q blockquote{margin:0;font:700 clamp(32px,4.2vw,54px)/1.04 "Bricolage Grotesque",sans-serif;letter-spacing:-.03em;text-indent:-.42em}
+.q .who{color:var(--brass);font-weight:600;font-size:15px;margin:18px 0 0}
+.q .say p.body{color:var(--soft);margin:14px 0 0;max-width:46ch}
+.q .say ul{margin:14px 0 0;padding-left:20px;color:var(--soft);max-width:46ch}
+.q .say li{margin:4px 0}
+.shot{max-width:420px;justify-self:center;width:100%}
+.shot .frame{max-height:600px;-webkit-mask-image:linear-gradient(#000 82%,transparent);mask-image:linear-gradient(#000 82%,transparent)}
+.shot.wide{max-width:none}
+.shot.wide .frame{max-height:none;-webkit-mask-image:none;mask-image:none}
+
+/* who */
+.band{background:var(--wash);padding:80px 0}
+.band h2{font-size:clamp(30px,3.6vw,42px);letter-spacing:-.02em}
+.who-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px;margin-top:38px}
+.who-grid h3{font-size:23px;letter-spacing:-.01em}
+.who-grid p{color:var(--soft);margin:10px 0 0}
+
+/* works with */
+.with{padding:80px 0}
+.with h2{font-size:clamp(30px,3.6vw,42px);letter-spacing:-.02em}
+.with dl{display:grid;grid-template-columns:200px 1fr;gap:18px 32px;margin:34px 0 0}
+.with dt{font-weight:600}
+.with dd{margin:0;color:var(--soft)}
+
+/* layout */
+.layout{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:56px;align-items:center;padding:0 0 88px}
+.layout h2{font-size:clamp(28px,3.2vw,38px);letter-spacing:-.02em}
+.layout ul{color:var(--soft);padding-left:20px;margin:16px 0 0}
+.layout li{margin:6px 0}
+
+/* safe */
+.safe{border-top:1px solid var(--rule);padding:80px 0}
+.safe h2{font-size:clamp(30px,3.6vw,42px);letter-spacing:-.02em;max-width:18ch}
+.safe-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 56px;margin-top:36px}
+.safe-grid h3{font:600 18px "Public Sans",sans-serif}
+.safe-grid p{color:var(--soft);margin:6px 0 0}
+
+/* setup */
+.setup{background:var(--code);color:var(--code-ink);padding:80px 0}
+.setup .wrap{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:56px;align-items:start}
+.setup h2{font-size:clamp(30px,3.6vw,42px);letter-spacing:-.02em;color:#fff}
+.setup p{color:#A9B8B0;margin:14px 0 0}
+.setup a{color:#8FD3B6}
+.setup pre{margin:0;background:#0A0F0C;border:1px solid #26332C;border-radius:12px;padding:22px 24px;font:14.5px/1.75 "JetBrains Mono",monospace;overflow-x:auto;color:#D5E0DA}
+.setup pre .c{color:#6F8579}
+.setup pre .k{color:#8FD3B6}
+
+footer{padding:36px 0 48px;color:var(--soft);font-size:15px}
+footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+@media (max-width:900px){
+  .hero,.q,.layout,.setup .wrap{grid-template-columns:1fr;gap:32px}
+  .q.flip .say{order:0}
+  .hero{padding:16px 0 64px}
+  .who-grid,.safe-grid{grid-template-columns:1fr;gap:28px}
+  .with dl{grid-template-columns:1fr;gap:4px}
+  .with dd{margin-bottom:14px}
+  .top nav{gap:16px}
+}
+@media (max-width:520px){
+  .wrap{padding:0 16px}
+  .top nav a.hide-sm{display:none}
+  .install{font-size:13px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="mark" href="#"><i>?</i>Alfred</a>
+    <nav>
+      <a href="https://github.com/Atoria/Alfred#readme">Docs</a>
+      <a class="hide-sm" href="https://packagist.org/packages/atoria/alfred">Packagist</a>
+      <a href="https://github.com/Atoria/Alfred">GitHub</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <h1>Ask your Laravel app how it works.</h1>
+      <p class="lede">Alfred adds a small ? button to your app. Click it, click any number, column or badge, and get a plain-language answer traced through your own code.</p>
+      <div class="install"><code id="cmd">composer require atoria/alfred</code><button type="button" id="copy">Copy</button></div>
+      <div class="ctas"><a href="#setup">Set it up in four lines</a><a href="https://github.com/Atoria/Alfred">Read the code</a></div>
+    </div>
+    <figure>
+      <div class="frame"><img src="img/hero.webp" width="1640" height="1500" alt="A shop dashboard with the Alfred panel open, explaining how the conversion rate is calculated: a formula, the steps and where the data comes from."></div>
+      <figcaption>Press <kbd>Alt</kbd> <kbd>Shift</kbd> <kbd>A</kbd>, click the conversion rate, and Alfred explains it.</figcaption>
+    </figure>
+  </section>
+</div>
+
+<section class="questions">
+  <div class="wrap">
+    <div class="intro">
+      <h2>Questions it answers</h2>
+      <p>Everyone who uses your app has questions about what's on the screen. Usually they end up in a developer's inbox. With Alfred, they ask the page.</p>
+    </div>
+
+    <article class="q">
+      <div class="say">
+        <blockquote>“How is this calculated?”</blockquote>
+        <p class="who">Finance, operations, support</p>
+        <p class="body">Alfred's agent reads the controller, the components, the scopes and the queries behind the value, then explains it in plain words: what it means, the formula, the steps, where the data comes from and what's worth knowing.</p>
+        <ul>
+          <li>Your team can verify or edit an answer. Everyone then sees “Verified” instead of “AI-generated”.</li>
+          <li>The first answer takes 10 to 40 seconds. After that it's saved and instant for everyone.</li>
+        </ul>
+      </div>
+      <figure class="shot"><div class="frame"><img src="img/choose.webp" width="838" height="1000" loading="lazy" alt="The Alfred panel offering three choices for the clicked value: How is this calculated?, Change this, and Report or request."></div></figure>
+    </article>
+
+    <article class="q flip">
+      <div class="say">
+        <blockquote>“Does that include refunded orders?”</blockquote>
+        <p class="who">Anyone reading the answer</p>
+        <p class="body">Ask a follow-up right under the explanation. Alfred goes back to the code for the specifics. Your questions stay private to you, and a reviewer can add a good answer to the explanation for everyone.</p>
+      </div>
+      <figure class="shot"><div class="frame"><img src="img/followup.webp" width="838" height="1300" loading="lazy" alt="A follow-up question, Does this include refunded orders?, answered under the explanation, with a button to add the answer to the explanation."></div></figure>
+    </article>
+
+    <article class="q">
+      <div class="say">
+        <blockquote>“Which orders make up this number?”</blockquote>
+        <p class="who">Anyone checking a figure</p>
+        <p class="body">“Show the records behind this” turns a count or a sum into the rows it was calculated from. Columns you mark as sensitive stay hidden.</p>
+      </div>
+      <figure class="shot"><div class="frame"><img src="img/records.webp" width="838" height="1280" loading="lazy" alt="A table of the order records behind the dashboard value, with order number, customer, total, status and date."></div></figure>
+    </article>
+
+    <article class="q flip">
+      <div class="say">
+        <blockquote>“Where does this live in the code?”</blockquote>
+        <p class="who">Developers, and new joiners most of all</p>
+        <p class="body">The developer tab shows the code path: each file and line on the way to the value, the queries it runs, how it's cached and the traps. It's only shown to people who are allowed to see code.</p>
+      </div>
+      <figure class="shot"><div class="frame"><img src="img/developers.webp" width="838" height="1800" loading="lazy" alt="The For developers tab listing the code flow from the controller to the Blade view, the SQL queries, the caching and a gotcha."></div></figure>
+    </article>
+
+    <article class="q">
+      <div class="say">
+        <blockquote>“Can we make this green when it's above 2.5%?”</blockquote>
+        <p class="who">Product, design, QA</p>
+        <p class="body">Describe a change in your own words. Alfred finds the code and proposes the smallest edit that does it, shown as a diff. Nothing is written until someone decides to.</p>
+        <ul>
+          <li>Not quite right? Refine it, and Alfred tries again knowing what was wrong.</li>
+          <li>It works with Blade, Livewire and Filament, and with Vue, React and Svelte through Inertia.</li>
+        </ul>
+      </div>
+      <figure class="shot"><div class="frame"><img src="img/change.webp" width="838" height="1800" loading="lazy" alt="A proposed change: a short Blade diff that wraps the conversion rate in a green badge, with buttons to preview it, open a pull request or prepare a ticket."></div></figure>
+    </article>
+
+    <article class="q flip">
+      <div class="say">
+        <blockquote>“What would that look like?”</blockquote>
+        <p class="who">Whoever asked for the change</p>
+        <p class="body">Preview the change on the real page, with real data. Only you see it, and the code isn't touched. From the preview bar you can open a pull request or a ticket, refine the change, or stop.</p>
+      </div>
+      <figure class="shot wide"><div class="frame"><img src="img/preview.webp" width="2160" height="1350" loading="lazy" alt="The dashboard previewing the change: the conversion rate now shows as a green badge, with a preview bar at the top offering Details, Ticket, Open pull request, Refine and Stop."></div></figure>
+    </article>
+
+    <article class="q">
+      <div class="say">
+        <blockquote>“Can someone pick this up?”</blockquote>
+        <p class="who">The person who found it</p>
+        <p class="body">Turn a change or a plain report into a ticket in your tracker. It comes with the request, the diff, screenshots and where the element lives in the code, and optionally with a draft pull request linked both ways.</p>
+      </div>
+      <figure class="shot"><div class="frame"><img src="img/ticket.webp" width="838" height="1600" loading="lazy" alt="The ticket form: a title and description, a checkbox to include the diff, Jira as the destination and a checkbox to also open a GitHub pull request."></div></figure>
+    </article>
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap">
+    <h2>Who it's for</h2>
+    <div class="who-grid">
+      <div>
+        <h3>People who rely on the numbers</h3>
+        <p>Operations, finance and support get answers on the spot, from the code that actually produces the figure. Reviewed answers show as verified.</p>
+      </div>
+      <div>
+        <h3>People who shape the product</h3>
+        <p>Product managers, designers and testers on staging can describe a change, see it on the page and hand it over as a ticket or pull request, without waiting for a developer to find the file.</p>
+      </div>
+      <div>
+        <h3>Developers</h3>
+        <p>Fewer “how is this worked out?” messages. Tickets arrive with the diff and the file. Locally, you can apply a change and undo it in one click.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="with">
+  <div class="wrap">
+    <h2>Works with what you have</h2>
+    <dl>
+      <dt>Laravel</dt><dd>Laravel 11, 12 and 13 on PHP 8.2 or newer. No annotations in your views.</dd>
+      <dt>Front end</dt><dd>Blade, Livewire, Filament, and Inertia with Vue, React or Svelte.</dd>
+      <dt>AI models</dt><dd>OpenAI built in. Claude, Gemini, Groq, Ollama, OpenRouter and more through LarAgent, with fallbacks, usage tracking and optional daily budgets.</dd>
+      <dt>Ticket trackers</dt><dd>Jira, GitHub Issues, GitLab, Linear, Trello, ClickUp and Asana, or your own. Without a tracker, copy the ticket as Markdown.</dd>
+      <dt>Pull requests</dt><dd>Draft pull requests on GitHub, GitLab or Bitbucket, made through their APIs. Git isn't needed on the server.</dd>
+      <dt>Multi-tenant apps</dt><dd>stancl/tenancy and spatie/laravel-multitenancy. Every explanation, change and ticket stays in its tenant.</dd>
+      <dt>Testers on staging</dt><dd>Visitors who aren't signed in can use Alfred on staging through a private access link, with their own rate limits. Never in production by default.</dd>
+    </dl>
+  </div>
+</section>
+
+<div class="wrap">
+  <section class="layout">
+    <figure class="shot wide" style="margin:0"><div class="frame"><img src="img/side-by-side.webp" width="2160" height="1350" loading="lazy" alt="The dashboard narrowed to make room for the Alfred panel docked beside it, so nothing is covered."></div></figure>
+    <div>
+      <h2>Stays out of the way</h2>
+      <ul>
+        <li>Put the panel side by side with the page, so it covers nothing.</li>
+        <li>Drag its edge to resize it, or move it to the other side.</li>
+        <li>Minimize it while it works. A small button tells you when it's done.</li>
+        <li>Your name, icon and colour, light and dark mode, and a shadow root so your CSS and Alfred's never clash.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<section class="safe">
+  <div class="wrap">
+    <h2>Careful with your code and your data</h2>
+    <div class="safe-grid">
+      <div><h3>Hidden until you choose</h3><p>Nobody sees Alfred until you list them by email or give them a gate. Everyone else gets no button and no script.</p></div>
+      <div><h3>Reads only what you allow</h3><p>The agent reads the folders you list. It never reads <code>.env</code>, keys, credentials, <code>storage</code>, <code>vendor</code> or <code>.git</code>, and it can't change providers, policies or middleware.</p></div>
+      <div><h3>Nothing written unless you say so</h3><p>Propose mode never writes on the server. Previews exist only in your own session. Apply and undo refuse if the file has changed since.</p></div>
+      <div><h3>Your data stays on your server</h3><p>By default the AI sees your code, never the values on the page. Anything that looks like a credential is removed first. Daily budgets cap what it can spend.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="setup" id="setup">
+  <div class="wrap">
+    <div>
+      <h2>Set it up in four lines</h2>
+      <p>Install, migrate, add your key and say who may use it. Sign in, reload, and the ? appears in the corner.</p>
+      <p>Every option is in the <a href="https://github.com/Atoria/Alfred/blob/main/docs/configuration.md">configuration reference</a>. To check your setup, run <code>php artisan alfred:doctor</code>.</p>
+    </div>
+<pre><span class="k">composer require</span> atoria/alfred
+<span class="k">php artisan</span> migrate
+
+<span class="c"># .env</span>
+ALFRED_ENABLED=true
+ALFRED_OPENAI_API_KEY=sk-...
+ALFRED_USERS=*@your-company.com
+ALFRED_VERIFIERS=you@your-company.com</pre>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Alfred is open source under the MIT licence, made by Andria Toria.</span>
+    <span><a href="https://github.com/Atoria/Alfred">GitHub</a> &nbsp; <a href="https://packagist.org/packages/atoria/alfred">Packagist</a></span>
+  </div>
+</footer>
+
+<script>
+document.getElementById('copy').addEventListener('click', function () {
+  var b = this, text = document.getElementById('cmd').textContent;
+  var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1600); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, function () {});
+});
+</script>
+</body>
+</html>
