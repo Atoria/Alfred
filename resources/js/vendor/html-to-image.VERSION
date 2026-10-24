@@ -1,0 +1,2 @@
+html-to-image 1.11.11 (MIT, https://github.com/bubkoo/html-to-image), dist/html-to-image.js unchanged.
+Update: npm pack html-to-image@<version>, copy package/dist/html-to-image.js here, and update this line and the README.

@@ -1,0 +1,19 @@
+includes:
+	- vendor/larastan/larastan/extension.neon
+	- phpstan-baseline.neon
+
+parameters:
+	level: 5
+
+	paths:
+		- src
+
+	# Optional integrations: these packages are not always installed, and
+	# the code that uses them checks class_exists() first.
+	reportUnmatchedIgnoredErrors: false
+	ignoreErrors:
+		- '#Stancl\\Tenancy\\#'
+		- '#Spatie\\Multitenancy\\#'
+		- '#LarAgent\\#'
+		- '#Livewire\\#'
+		- '#Function tenancy not found#' # stancl/tenancy's helper

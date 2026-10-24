@@ -1,0 +1,117 @@
+name: Bug report
+description: Something in Alfred doesn't work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this.
+
+        **Security issues:** please don't open a public issue. See the [security policy](https://github.com/Atoria/Alfred/security/policy).
+
+        Before you paste logs or screenshots, remove API keys, access keys, tokens, real customer data and private source code.
+
+  - type: input
+    id: alfred-version
+    attributes:
+      label: Alfred version
+      description: "`composer show atoria/alfred | grep versions`"
+      placeholder: 1.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: laravel-version
+    attributes:
+      label: Laravel version
+      placeholder: 12.10.0
+    validations:
+      required: true
+
+  - type: input
+    id: php-version
+    attributes:
+      label: PHP version
+      placeholder: '8.4.1'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: AI provider
+      options:
+        - OpenAI (built-in)
+        - OpenAI-compatible gateway (built-in, custom ALFRED_OPENAI_BASE_URL)
+        - LarAgent + Anthropic (Claude)
+        - LarAgent + Gemini
+        - LarAgent + Groq
+        - LarAgent + Ollama
+        - LarAgent + OpenRouter
+        - LarAgent + other provider
+        - Not related to the AI provider
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: Model
+      description: Optional. The model name, if relevant.
+      placeholder: gpt-5-mini
+
+  - type: dropdown
+    id: frontend
+    attributes:
+      label: Frontend stack
+      description: Select every stack on the affected page.
+      multiple: true
+      options:
+        - Blade
+        - Livewire
+        - Filament
+        - Inertia + Vue
+        - Inertia + React
+        - Other (describe below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest set of steps, including relevant `ALFRED_*` settings.
+      placeholder: |
+        1. Set ALFRED_EDIT=true, ALFRED_EDIT_MODE=propose
+        2. Open /dashboard and click the ? button
+        3. Click "How is this calculated?" on the revenue card
+        4. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and errors
+      description: Relevant lines from `storage/logs/laravel.log` and the browser console. Redact secrets first.
+      render: text
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Queue driver, multi-tenancy package, cache store, screenshots, etc.
