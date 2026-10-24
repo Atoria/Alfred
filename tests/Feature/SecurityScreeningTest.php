@@ -26,7 +26,7 @@ class SecurityScreeningTest extends TestCase
     public function test_a_follow_up_asking_for_another_tenants_data_is_refused_and_recorded(): void
     {
         Event::fake([SuspiciousRequestBlocked::class]);
-        Log::spy();
+        $this->spyLog();
         $user = $this->user('nosy@example.com');
         [$token, $id] = $this->explained($user);
         $calls = count($this->llm->requests);

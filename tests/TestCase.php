@@ -7,9 +7,11 @@ use Atoria\Alfred\Llm\LlmClient;
 use Atoria\Alfred\Tests\Fixtures\App\Http\Controllers\DashboardController;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Auth\User;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
+use Mockery\MockInterface;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra
@@ -81,6 +83,19 @@ abstract class TestCase extends Orchestra
             Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
             Route::get('/dashboard.json', [DashboardController::class, 'json'])->name('dashboard.json');
         });
+    }
+
+    /**
+     * Log::spy() whose channel() keeps returning the spy, so framework code
+     * that logs through a channel (e.g. PHP deprecation notices on newer PHP
+     * with older Laravel) doesn't call a method on null.
+     */
+    protected function spyLog(): MockInterface
+    {
+        $spy = Log::spy();
+        $spy->shouldReceive('channel')->andReturnSelf()->byDefault();
+
+        return $spy;
     }
 
     protected function user(string $email = 'manager@example.com'): User

@@ -36,6 +36,12 @@ jobs:
           # Laravel 13 requires PHP 8.3+.
           - php: '8.2'
             laravel: '13'
+          # Laravel 11 doesn't support PHP 8.5.
+          - php: '8.5'
+            laravel: '11'
+          # The lowest versions of our dependencies predate PHP 8.5.
+          - php: '8.5'
+            deps: lowest
 
     steps:
       - name: Checkout

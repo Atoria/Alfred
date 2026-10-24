@@ -126,7 +126,7 @@ class GuestTest extends TestCase
         $this->assertNull($this->asGuest()->overlay());
         $this->get('/_alfred/access?key=open-sesame')->assertNotFound();
 
-        Log::spy();
+        $this->spyLog();
         config(['alfred.guests.environments' => ['staging', 'production']]);
         $this->assertNotNull($this->asGuest()->overlay());
         Log::shouldHaveReceived('warning')->once()->withArgs(fn ($message) => str_contains($message, 'guest access is switched on in production'));
