@@ -11,6 +11,7 @@ use Atoria\Alfred\Tests\Fixtures\LarAgent\RecordingChatDriver;
 use Atoria\Alfred\Tests\Fixtures\LarAgent\RecordingClaudeDriver;
 use Atoria\Alfred\Tests\Fixtures\LarAgent\RecordingResponsesDriver;
 use Atoria\Alfred\Tests\TestCase;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Testing\TestResponse;
 use LarAgent\Drivers\Anthropic\ClaudeDriver;
 use LarAgent\Drivers\OpenAi\OllamaDriver;
@@ -196,6 +197,32 @@ class LarAgentTest extends TestCase
         $second = $driver->payloads[1];
         $this->assertStringContainsString('How is this calculated?', is_string($second['system']) ? $second['system'] : json_encode($second['system']));
         $this->assertStringContainsString('"tool_use_id":"toolu_1"', json_encode($second['messages']));
+    }
+
+    public function test_a_reply_cut_off_at_the_token_limit_is_retried_once_shorter(): void
+    {
+        $cutOff = fn () => [
+            'last' => ['status' => 'incomplete', 'incomplete_details' => ['reason' => 'max_output_tokens'], 'usage' => ['input_tokens' => 500, 'output_tokens' => 16000],
+                'output' => [['type' => 'function_call', 'name' => 'submit_explanation', 'arguments' => '{"title":"Fill']]],
+            'throw' => new \InvalidArgumentException('ToolCall arguments must be a valid JSON string. Error: Syntax error'),
+        ];
+        Exceptions::fake();
+
+        $driver = (new RecordingResponsesDriver(['model' => 'gpt-5-mini']))->recording([$cutOff(), $this->submit()]);
+        $this->useDriver($driver);
+        $this->explain()->assertOk()->assertJson(['title' => 'Fill rate']);
+
+        $retry = $driver->payloads->getArrayCopy()[1];
+        $this->assertStringContainsString('Your last reply was cut off', json_encode($retry['input']));
+        $this->assertSame(16020, Explanation::query()->first()->output_tokens, 'the lost reply still counts');
+        Exceptions::assertReported(fn (LlmException $e) => str_contains($e->getMessage(), '"incomplete_reason":"max_output_tokens"') && str_contains($e->getMessage(), 'submit_explanation (14 chars)'));
+
+        // Twice in a row: a clear message, not a JSON parse error.
+        $driver = (new RecordingResponsesDriver(['model' => 'gpt-5-mini']))->recording([$cutOff(), $cutOff()]);
+        $this->useDriver($driver);
+        $verifier = $this->user('verifier@example.com');
+        $this->actingAs($verifier)->postJson('/_alfred/explain', ['token' => $this->loadDashboard($verifier), 'element' => $this->element(['labels' => ['Other']])])
+            ->assertStatus(502)->assertJsonPath('message', fn ($m) => str_contains($m, 'cut off at the token limit (ALFRED_LARAGENT_MAX_TOKENS=16000)'));
     }
 
     public function test_provider_errors_are_explained(): void

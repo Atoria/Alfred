@@ -6,6 +6,15 @@ All notable changes to Alfred are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-10-24
+
+### Fixed
+- With `ALFRED_PROVIDER=laragent`, a reply cut off at the token limit failed
+  with "ToolCall arguments must be a valid JSON string". Alfred now asks the
+  model once more for a shorter reply. If that is cut off too, it says so,
+  names the setting to raise, and logs what happened (token counts, which
+  tool), never the content.
+
 ## [1.0.2] - 2026-10-24
 
 ### Changed
@@ -80,6 +89,7 @@ First public release.
   `ChangeProposed`, `ChangeApplied`, `ChangeReverted`, `TicketCreated`,
   `PullRequestOpened`, `SuspiciousRequestBlocked`.
 
-[Unreleased]: https://github.com/Atoria/Alfred/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/Atoria/Alfred/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/Atoria/Alfred/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/Atoria/Alfred/compare/v1.0.0...v1.0.2
 [1.0.0]: https://github.com/Atoria/Alfred/releases/tag/v1.0.0

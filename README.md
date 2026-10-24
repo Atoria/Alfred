@@ -96,7 +96,7 @@ Then add your own email to `ALFRED_VERIFIERS` (it must be the email you sign in 
 
 The first explanation of something takes 10–40 seconds while the agent reads your code. After that it's cached and instant for everyone.
 
-To publish the config file: `php artisan vendor:publish --tag=alfred-config`. To check your setup at any time: `php artisan alfred:doctor`.
+Those four lines are all you need to start. **Every other option, with its default and what it does, is in [docs/configuration.md](docs/configuration.md).** To publish the config file: `php artisan vendor:publish --tag=alfred-config`. To check your setup at any time: `php artisan alfred:doctor`.
 
 ## Example setups
 

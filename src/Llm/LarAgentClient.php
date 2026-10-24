@@ -100,6 +100,31 @@ class LarAgentClient implements LlmClient
         try {
             $message = $driver->sendMessage($messages, $this->settings($driver, $forceTool));
         } catch (Throwable $e) {
+            // A tool call LarAgent couldn't parse: almost always a reply cut off
+            // at the token limit. Say what happened instead of a JSON error.
+            if (str_contains($e->getMessage(), 'ToolCall arguments must be a valid JSON')) {
+                $last = $this->lastResponse($driver);
+                $usage = (array) ($last['usage'] ?? []);
+                $reason = $last['incomplete_details']['reason'] ?? null;
+                report(new LlmException('Alfred: LarAgent ['.$this->provider().'] returned an unusable tool call: '.json_encode([
+                    'status' => $last['status'] ?? null,
+                    'incomplete_reason' => $reason,
+                    'output_tokens' => $usage['output_tokens'] ?? null,
+                    'reasoning_tokens' => $usage['output_tokens_details']['reasoning_tokens'] ?? null,
+                    'max_tokens' => $this->config['max_tokens'] ?? null,
+                    'calls' => array_map(fn ($o) => ($o['name'] ?? '?').' ('.strlen((string) ($o['arguments'] ?? '')).' chars)', array_values(array_filter((array) ($last['output'] ?? []), fn ($o) => ($o['type'] ?? '') === 'function_call'))),
+                ])));
+
+                throw new LlmCutOff(
+                    $reason === 'max_output_tokens'
+                        ? 'The AI\'s reply was cut off at the token limit (ALFRED_LARAGENT_MAX_TOKENS='.($this->config['max_tokens'] ?? 16000).'). Raise it, or use ALFRED_PROVIDER=openai, which has no such limit.'
+                        : 'The AI returned a malformed tool call.',
+                    (int) ($usage['input_tokens'] ?? 0),
+                    (int) ($usage['output_tokens'] ?? 0),
+                    $e,
+                );
+            }
+
             throw new LlmException($this->explain($e), 0, $e);
         }
 
@@ -284,6 +309,22 @@ class LarAgentClient implements LlmClient
             $driver instanceof GeminiDriver => 'gemini',
             default => 'other',
         };
+    }
+
+    /** The driver's last raw response, if it kept one (LarAgent's Responses driver does). @return array<string, mixed> */
+    protected function lastResponse(object $driver): array
+    {
+        try {
+            if (! property_exists($driver, 'lastResponse')) {
+                return [];
+            }
+            $property = new \ReflectionProperty($driver, 'lastResponse');
+            $value = $property->getValue($driver);
+
+            return is_object($value) && method_exists($value, 'toArray') ? (array) $value->toArray() : (is_array($value) ? $value : []);
+        } catch (Throwable) {
+            return [];
+        }
     }
 
     protected function explain(Throwable $e): string

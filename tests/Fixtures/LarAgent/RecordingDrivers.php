@@ -37,6 +37,11 @@ trait Records
         if ($next instanceof \Throwable) {
             throw $next;
         }
+        // ['last' => raw response array, 'throw' => Throwable]: as when the driver got a reply it couldn't parse.
+        if (is_array($next)) {
+            $this->lastResponse = $next['last'];
+            throw $next['throw'];
+        }
 
         return $next ?? throw new \RuntimeException('Recording driver ran out of scripted replies');
     }

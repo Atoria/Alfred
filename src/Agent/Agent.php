@@ -12,6 +12,7 @@ use Atoria\Alfred\Agent\Tools\Tool;
 use Atoria\Alfred\Context\ElementDescriptor;
 use Atoria\Alfred\Context\PageContext;
 use Atoria\Alfred\Llm\LlmClient;
+use Atoria\Alfred\Llm\LlmCutOff;
 use Atoria\Alfred\Llm\LlmException;
 use Atoria\Alfred\Privacy\Redactor;
 use Atoria\Alfred\Security\AccessDenied;
@@ -102,6 +103,7 @@ class Agent
         $outputTokens = 0;
         $steps = 0;
         $forcedAttempts = 0;
+        $cutOffs = 0;
 
         while ($state->submission === null) {
             $steps++;
@@ -116,7 +118,20 @@ class Agent
                 $input[] = $this->llm->userMessage("Step limit reached. Call {$terminal} now with what you have.");
             }
 
-            $response = $this->llm->respond($instructions, $input, $definitions, $force);
+            try {
+                $response = $this->llm->respond($instructions, $input, $definitions, $force);
+            } catch (LlmCutOff $e) {
+                Usage::record(self::usageKind($terminal), $this->llm->model(), $e->inputTokens, $e->outputTokens);
+                $inputTokens += $e->inputTokens;
+                $outputTokens += $e->outputTokens;
+                // Once per run: ask again, shorter. A second cut-off is a real failure.
+                if ($cutOffs++ >= 1) {
+                    throw $e;
+                }
+                $input[] = $this->llm->userMessage('Your last reply was cut off before it finished, so it was lost. Do not repeat it. Make your next tool call now, with short arguments: read or search for one specific thing, or if you have enough, call '.$terminal.' with concise text.');
+
+                continue;
+            }
             $inputTokens += $response->inputTokens;
             $outputTokens += $response->outputTokens;
             Usage::record(self::usageKind($terminal), $this->llm->model(), $response->inputTokens, $response->outputTokens);
