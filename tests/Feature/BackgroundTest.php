@@ -2,9 +2,11 @@
 
 namespace Atoria\Alfred\Tests\Feature;
 
+use Atoria\Alfred\Alfred;
 use Atoria\Alfred\Tenancy\Tenancy;
 use Atoria\Alfred\Tests\Fixtures\Tenancy\FakeTenancy;
 use Atoria\Alfred\Tests\TestCase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 
@@ -133,7 +135,7 @@ class BackgroundTest extends TestCase
     {
         config(['alfred.async.max_running' => 1]);
         $user = $this->user();
-        $key = 'alfred:running:'.sha1(app(\Atoria\Alfred\Alfred::class)->userKey(tap(\Illuminate\Http\Request::create('/'))->setUserResolver(fn () => $user)));
+        $key = 'alfred:running:'.sha1(app(Alfred::class)->userKey(tap(Request::create('/'))->setUserResolver(fn () => $user)));
         Cache::put($key, ['other-task' => time()], 600);
 
         $token = $this->loadDashboard($user);

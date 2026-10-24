@@ -2,6 +2,9 @@
 
 namespace Atoria\Alfred\Context;
 
+use Atoria\Alfred\Security\PathGuard;
+use Illuminate\Support\Str;
+
 /**
  * Where an element lives in the code, from what Alfred recorded about the
  * page — no AI involved, so it's instant and free.
@@ -59,7 +62,7 @@ class CodeLocator
         }
         $needles = [];
         foreach ($element->components as $name) {
-            $short = \Illuminate\Support\Str::kebab(class_basename(str_replace(['.', '/'], '\\', (string) $name)));
+            $short = Str::kebab(class_basename(str_replace(['.', '/'], '\\', (string) $name)));
             if (strlen($short) >= 3) {
                 $needles[] = $short;
             }
@@ -95,7 +98,7 @@ class CodeLocator
             }
         }
 
-        $front = (new FrontendSource(\Atoria\Alfred\Security\PathGuard::fromConfig()))->resolve($element);
+        $front = (new FrontendSource(PathGuard::fromConfig()))->resolve($element);
 
         return [
             'frontend' => [

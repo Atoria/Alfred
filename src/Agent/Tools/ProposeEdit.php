@@ -3,10 +3,12 @@
 namespace Atoria\Alfred\Agent\Tools;
 
 use Atoria\Alfred\Agent\AgentState;
+use Atoria\Alfred\Changes\EditApplier;
 use Atoria\Alfred\Changes\MatchProblem;
 use Atoria\Alfred\Changes\TextMatcher;
 use Atoria\Alfred\Security\AccessDenied;
 use Atoria\Alfred\Security\PathGuard;
+use Atoria\Alfred\Security\SecretScrubber;
 use Illuminate\Support\Facades\Blade;
 use ParseError;
 use Throwable;
@@ -143,7 +145,7 @@ class ProposeEdit implements Tool
             $replace = $placed['replace'];
             $normalized[] = ['path' => $relative, 'search' => $search, 'replace' => $replace];
             // The same applier preview, apply and pull requests use, so the stored result is what they produce.
-            $files[$relative]['after'] = \Atoria\Alfred\Changes\EditApplier::apply($current, [['search' => $search, 'replace' => $replace]]);
+            $files[$relative]['after'] = EditApplier::apply($current, [['search' => $search, 'replace' => $replace]]);
         }
 
         foreach ($files as $relative => $file) {
@@ -166,8 +168,8 @@ class ProposeEdit implements Tool
         }
 
         $state->submission = [
-            'summary' => \Atoria\Alfred\Security\SecretScrubber::scrub($summary),
-            'notes' => $notes !== null ? \Atoria\Alfred\Security\SecretScrubber::scrub($notes) : null,
+            'summary' => SecretScrubber::scrub($summary),
+            'notes' => $notes !== null ? SecretScrubber::scrub($notes) : null,
             'edits' => $normalized,
             'files' => array_map(fn ($f) => ['before' => $f['before'], 'after' => $f['after']], $files),
         ];

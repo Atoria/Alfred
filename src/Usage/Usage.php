@@ -7,6 +7,7 @@ use Atoria\Alfred\Explanations\TooManyGenerations;
 use Atoria\Alfred\Tenancy\Tenancy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
@@ -56,9 +57,9 @@ class Usage extends Model
                 'model' => mb_substr((string) $model, 0, 100),
             ];
             $add = fn () => static::query()->where($bucket)->update([
-                'requests' => \Illuminate\Support\Facades\DB::raw('requests + 1'),
-                'input_tokens' => \Illuminate\Support\Facades\DB::raw('input_tokens + '.max(0, $input)),
-                'output_tokens' => \Illuminate\Support\Facades\DB::raw('output_tokens + '.max(0, $output)),
+                'requests' => DB::raw('requests + 1'),
+                'input_tokens' => DB::raw('input_tokens + '.max(0, $input)),
+                'output_tokens' => DB::raw('output_tokens + '.max(0, $output)),
                 'updated_at' => now(),
             ]);
 
@@ -92,7 +93,7 @@ class Usage extends Model
         try {
             // Per workspace: one tenant spending its budget never blocks another.
             $today = static::query()->where('day', now()->toDateString())->where('tenant', (string) app(Tenancy::class)->current());
-            $sum = fn ($q) => (int) $q->sum(\Illuminate\Support\Facades\DB::raw('input_tokens + output_tokens'));
+            $sum = fn ($q) => (int) $q->sum(DB::raw('input_tokens + output_tokens'));
             $spentByAll = $total > 0 ? $sum(clone $today) : 0;
             $spentByUser = $perUser > 0 ? $sum((clone $today)->where('user_key', $userKey)) : 0;
         } catch (Throwable $e) {

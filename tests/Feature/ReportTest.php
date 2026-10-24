@@ -35,7 +35,7 @@ class ReportTest extends TestCase
         $this->assertSame([], $this->llm->requests, 'no AI involved');
         // Someone without code access isn't shown where it lives in the code; the ticket carries it.
         $this->assertNull($res->json('location'));
-        $location = \Atoria\Alfred\Changes\Change::query()->findOrFail($res->json('id'))->location;
+        $location = Change::query()->findOrFail($res->json('id'))->location;
         $this->assertSame('dashboard', $location['route']);
         $this->assertStringContainsString('DashboardController@index', $location['action']);
         $this->assertSame('app/Http/Controllers/DashboardController.php', $location['controller_file']);

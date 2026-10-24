@@ -16,6 +16,8 @@ use Atoria\Alfred\Llm\LlmException;
 use Atoria\Alfred\Privacy\Redactor;
 use Atoria\Alfred\Security\AccessDenied;
 use Atoria\Alfred\Security\PathGuard;
+use Atoria\Alfred\Security\SecretScrubber;
+use Atoria\Alfred\Usage\Usage;
 use Throwable;
 
 /**
@@ -117,7 +119,7 @@ class Agent
             $response = $this->llm->respond($instructions, $input, $definitions, $force);
             $inputTokens += $response->inputTokens;
             $outputTokens += $response->outputTokens;
-            \Atoria\Alfred\Usage\Usage::record(self::usageKind($terminal), $this->llm->model(), $response->inputTokens, $response->outputTokens);
+            Usage::record(self::usageKind($terminal), $this->llm->model(), $response->inputTokens, $response->outputTokens);
 
             foreach ($response->items as $item) {
                 $input[] = $item;
@@ -180,6 +182,6 @@ class Agent
         }
 
         // Secrets hard-coded in ordinary files never leave the server.
-        return \Atoria\Alfred\Security\SecretScrubber::scrub(is_string($result) ? $result : (string) json_encode($result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR));
+        return SecretScrubber::scrub(is_string($result) ? $result : (string) json_encode($result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR));
     }
 }

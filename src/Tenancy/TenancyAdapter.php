@@ -2,6 +2,8 @@
 
 namespace Atoria\Alfred\Tenancy;
 
+use Illuminate\Http\Request;
+
 /**
  * How Alfred talks to your multi-tenancy package. Built in: stancl/tenancy
  * and spatie/laravel-multitenancy. Implement this for anything else and set
@@ -29,5 +31,5 @@ interface TenancyAdapter
      * package can't tell from the request alone. On a tenant domain, Alfred's
      * own requests must carry the page's signed tenant reference.
      */
-    public function isTenantRequest(\Illuminate\Http\Request $request): ?bool;
+    public function isTenantRequest(Request $request): ?bool;
 }

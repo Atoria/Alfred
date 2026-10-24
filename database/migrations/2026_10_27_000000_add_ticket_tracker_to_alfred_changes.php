@@ -1,5 +1,6 @@
 <?php
 
+use Atoria\Alfred\Alfred;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -9,7 +10,7 @@ return new class extends Migration
 {
     public function getConnection(): ?string
     {
-        return \Atoria\Alfred\Alfred::connection() ?? parent::getConnection();
+        return Alfred::connection() ?? parent::getConnection();
     }
 
     public function up(): void

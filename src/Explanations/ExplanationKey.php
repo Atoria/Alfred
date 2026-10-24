@@ -4,6 +4,7 @@ namespace Atoria\Alfred\Explanations;
 
 use Atoria\Alfred\Context\ElementDescriptor;
 use Atoria\Alfred\Context\PageContext;
+use Atoria\Alfred\Tenancy\Tenancy;
 
 /**
  * Identity of "this thing on this page", shared by every user and every
@@ -83,6 +84,6 @@ class ExplanationKey
      */
     protected static function tenantScope(): ?string
     {
-        return app(\Atoria\Alfred\Tenancy\Tenancy::class)->current();
+        return app(Tenancy::class)->current();
     }
 }

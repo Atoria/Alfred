@@ -2,6 +2,7 @@
 
 namespace Atoria\Alfred\Tests\Feature;
 
+use Atoria\Alfred\Changes\Change;
 use Atoria\Alfred\Context\ElementDescriptor;
 use Atoria\Alfred\Context\FrontendSource;
 use Atoria\Alfred\Security\PathGuard;
@@ -120,7 +121,7 @@ class FrontendTest extends TestCase
         $this->assertStringContainsString('heading-accent', $this->llm->toolOutputs()[0]);
 
         // Tickets and the overlay show where it lives.
-        $location = \Atoria\Alfred\Changes\Change::find($res->json('id'))->location;
+        $location = Change::find($res->json('id'))->location;
         $this->assertSame([self::HERO, 'resources/js/pages/Welcome.vue'], $location['frontend']['files']);
 
         // Applying writes the component.

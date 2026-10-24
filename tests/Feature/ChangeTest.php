@@ -2,6 +2,7 @@
 
 namespace Atoria\Alfred\Tests\Feature;
 
+use Atoria\Alfred\Alfred;
 use Atoria\Alfred\Changes\Change;
 use Atoria\Alfred\Tests\TestCase;
 use Illuminate\Support\Facades\File;
@@ -279,10 +280,10 @@ PHP);
     public function test_auto_mode_writes_only_in_local(): void
     {
         config()->set('alfred.edit.mode', null);
-        $this->assertSame('propose', app(\Atoria\Alfred\Alfred::class)->editMode());
+        $this->assertSame('propose', app(Alfred::class)->editMode());
 
         $this->app['env'] = 'local';
-        $this->assertSame('write', app(\Atoria\Alfred\Alfred::class)->editMode());
+        $this->assertSame('write', app(Alfred::class)->editMode());
     }
 
     public function test_discard(): void

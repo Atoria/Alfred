@@ -6,6 +6,8 @@ use Atoria\Alfred\Alfred;
 use Atoria\Alfred\Context\ContextStore;
 use Atoria\Alfred\Context\ElementDescriptor;
 use Atoria\Alfred\Context\PageContext;
+use Atoria\Alfred\Events\ExplanationVerified;
+use Atoria\Alfred\Events\FollowUpAnswered;
 use Atoria\Alfred\Explanations\Drilldown;
 use Atoria\Alfred\Explanations\Explainer;
 use Atoria\Alfred\Explanations\Explanation;
@@ -13,8 +15,13 @@ use Atoria\Alfred\Explanations\ExplanationKey;
 use Atoria\Alfred\Explanations\ExplanationPresenter;
 use Atoria\Alfred\Explanations\ExplanationVersion;
 use Atoria\Alfred\Explanations\TooManyGenerations;
+use Atoria\Alfred\FollowUps\FollowUpLimit;
+use Atoria\Alfred\FollowUps\FollowUps;
+use Atoria\Alfred\FollowUps\ThreadStore;
 use Atoria\Alfred\Llm\LlmException;
 use Atoria\Alfred\Security\PathGuard;
+use Atoria\Alfred\Security\Screening;
+use Atoria\Alfred\Tasks\Background;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,7 +33,7 @@ class ExplainController extends Controller
 {
     public function __construct(
         protected Alfred $alfred,
-        protected \Atoria\Alfred\Tasks\Background $background,
+        protected Background $background,
         protected ContextStore $store,
     ) {}
 
@@ -93,7 +100,7 @@ class ExplainController extends Controller
     }
 
     /** A follow-up question about an explanation, answered in the background. */
-    public function ask(Request $request, Explanation $explanation, \Atoria\Alfred\FollowUps\FollowUps $followUps, \Atoria\Alfred\FollowUps\ThreadStore $threads): JsonResponse
+    public function ask(Request $request, Explanation $explanation, FollowUps $followUps, ThreadStore $threads): JsonResponse
     {
         $this->authorizeUse($request);
         abort_unless((bool) config('alfred.followups.enabled', true), 404);
@@ -119,7 +126,7 @@ class ExplainController extends Controller
             }
         }
 
-        if ($refused = app(\Atoria\Alfred\Security\Screening::class)->refuse($request, $data['question'], 'follow-up')) {
+        if ($refused = app(Screening::class)->refuse($request, $data['question'], 'follow-up')) {
             return $refused;
         }
 
@@ -136,7 +143,7 @@ class ExplainController extends Controller
                 $thread = $followUps->ask($page, $element, $explanation, $thread, $question, $owner);
             } catch (TooManyGenerations $e) {
                 return response()->json(['message' => $e->getMessage()], 429)->header('Retry-After', (string) $e->retryAfter);
-            } catch (\Atoria\Alfred\FollowUps\FollowUpLimit $e) {
+            } catch (FollowUpLimit $e) {
                 return response()->json(['message' => $e->getMessage()], 429);
             } catch (LlmException $e) {
                 report($e);
@@ -146,7 +153,7 @@ class ExplainController extends Controller
 
             $last = end($thread->turns);
             if (is_array($last)) {
-                \Atoria\Alfred\Events\FollowUpAnswered::dispatch($explanation, (string) $last['question'], (string) $last['answer'], $owner);
+                FollowUpAnswered::dispatch($explanation, (string) $last['question'], (string) $last['answer'], $owner);
             }
 
             return response()->json($thread->present($this->alfred->canViewCode($this->alfred->user($request))));
@@ -154,7 +161,7 @@ class ExplainController extends Controller
     }
 
     /** A verifier keeps a good follow-up answer on the shared explanation, so the next person sees it without asking. */
-    public function keep(Request $request, Explanation $explanation, \Atoria\Alfred\FollowUps\ThreadStore $threads): JsonResponse
+    public function keep(Request $request, Explanation $explanation, ThreadStore $threads): JsonResponse
     {
         $this->authorizeExplanation($request, $explanation);
         $this->authorizeVerify($request);
@@ -217,7 +224,7 @@ class ExplainController extends Controller
 
         $this->markVerified($request, $explanation, $guard);
         ExplanationVersion::record($explanation, 'verified', $this->label($request));
-        \Atoria\Alfred\Events\ExplanationVerified::dispatch($explanation, $this->label($request));
+        ExplanationVerified::dispatch($explanation, $this->label($request));
 
         return $this->present($request, $explanation);
     }
@@ -247,7 +254,7 @@ class ExplainController extends Controller
         // A verifier wrote it, so it is verified as of the current code.
         $this->markVerified($request, $explanation, $guard);
         ExplanationVersion::record($explanation, 'edited', $this->label($request));
-        \Atoria\Alfred\Events\ExplanationVerified::dispatch($explanation, $this->label($request));
+        ExplanationVerified::dispatch($explanation, $this->label($request));
 
         return $this->present($request, $explanation);
     }

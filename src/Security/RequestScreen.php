@@ -2,6 +2,8 @@
 
 namespace Atoria\Alfred\Security;
 
+use Atoria\Alfred\Alfred;
+
 /**
  * Checks text a person types for the AI (follow-up questions, change
  * requests, refine feedback) before any AI sees it. Blocks attempts to:
@@ -67,7 +69,7 @@ class RequestScreen
                 if (preg_match($pattern, $normalized, $m) === 1) {
                     return [
                         'category' => $category,
-                        'reason' => sprintf(self::REASONS[$category], \Atoria\Alfred\Alfred::name()),
+                        'reason' => sprintf(self::REASONS[$category], Alfred::name()),
                         'match' => mb_substr($m[0], 0, 120),
                     ];
                 }

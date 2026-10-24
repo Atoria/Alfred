@@ -2,11 +2,14 @@
 
 namespace Atoria\Alfred\Tests\Feature;
 
+use Atoria\Alfred\Alfred;
 use Atoria\Alfred\Changes\Change;
 use Atoria\Alfred\Explanations\Explanation;
 use Atoria\Alfred\Tenancy\Tenancy;
 use Atoria\Alfred\Tests\Fixtures\Tenancy\FakeTenancy;
 use Atoria\Alfred\Tests\TestCase;
+use Atoria\Alfred\Usage\Usage;
+use Illuminate\Http\Request;
 
 /** One tenant must never see, use or affect anything of another tenant's. */
 class TenantIsolationTest extends TestCase
@@ -152,18 +155,18 @@ class TenantIsolationTest extends TestCase
     public function test_user_keys_name_the_tenant_even_on_central_pages(): void
     {
         $user = $this->user();
-        $request = \Illuminate\Http\Request::create('/');
+        $request = Request::create('/');
         $request->setUserResolver(fn () => $user);
 
-        $this->assertSame('u:web:-:'.$user->id, app(\Atoria\Alfred\Alfred::class)->userKey($request));
+        $this->assertSame('u:web:-:'.$user->id, app(Alfred::class)->userKey($request));
         FakeTenancy::$current = 'acme';
-        $this->assertSame('u:web:acme:'.$user->id, app(\Atoria\Alfred\Alfred::class)->userKey($request));
+        $this->assertSame('u:web:acme:'.$user->id, app(Alfred::class)->userKey($request));
     }
 
     public function test_one_tenant_cant_use_up_anothers_budget_or_rewrite_its_code(): void
     {
         config(['alfred.usage.daily_tokens' => 1000, 'alfred.edit.mode' => 'write']);
-        \Atoria\Alfred\Usage\Usage::query()->create(['day' => now()->toDateString(), 'tenant' => 'acme', 'user_key' => 'u:web:acme:1', 'kind' => 'explanation', 'model' => 'm', 'requests' => 50, 'input_tokens' => 900, 'output_tokens' => 200]);
+        Usage::query()->create(['day' => now()->toDateString(), 'tenant' => 'acme', 'user_key' => 'u:web:acme:1', 'kind' => 'explanation', 'model' => 'm', 'requests' => 50, 'input_tokens' => 900, 'output_tokens' => 200]);
 
         $verifier = $this->user('verifier@example.com');
         [$g, $gh] = $this->page('globex', $verifier);

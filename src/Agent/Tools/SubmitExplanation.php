@@ -3,6 +3,7 @@
 namespace Atoria\Alfred\Agent\Tools;
 
 use Atoria\Alfred\Agent\AgentState;
+use Atoria\Alfred\Security\SecretScrubber;
 
 /**
  * Terminal tool: the agent's structured answer, in two parts.
@@ -100,7 +101,7 @@ class SubmitExplanation implements Tool
 
         $dev = (array) ($arguments['developer'] ?? []);
 
-        $state->submission = \Atoria\Alfred\Security\SecretScrubber::scrubAll($business + [
+        $state->submission = SecretScrubber::scrubAll($business + [
             'developer' => [
                 'summary' => trim((string) ($dev['summary'] ?? '')),
                 'flow' => $list($dev['flow'] ?? []),

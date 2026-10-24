@@ -3,6 +3,7 @@
 namespace Atoria\Alfred\PullRequests;
 
 use Atoria\Alfred\Changes\Change;
+use Atoria\Alfred\Events\PullRequestOpened;
 use Atoria\Alfred\PullRequests\Providers\GitProvider;
 use Atoria\Alfred\PullRequests\Providers\GitProviderManager;
 
@@ -53,7 +54,7 @@ class PullRequestOpener
             'pr_opened_by' => $by,
             'pr_opened_at' => now(),
         ])->save();
-        \Atoria\Alfred\Events\PullRequestOpened::dispatch($change, $by);
+        PullRequestOpened::dispatch($change, $by);
 
         return ['provider' => $provider->name(), 'label' => $provider->label(), 'noun' => $provider->noun()] + $result;
     }

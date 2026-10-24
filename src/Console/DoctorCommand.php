@@ -10,6 +10,7 @@ use Illuminate\Console\Command;
 use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
+use LarAgent\Agent;
 use Throwable;
 
 /** Checks Alfred's setup and says what to fix. Never prints secrets: only whether they are set. */
@@ -34,7 +35,7 @@ class DoctorCommand extends Command
         // AI provider
         $provider = (string) config('alfred.provider', 'openai');
         if ($provider === 'laragent') {
-            $installed = class_exists(\LarAgent\Agent::class);
+            $installed = class_exists(Agent::class);
             $this->check('AI provider', $installed, $installed ? 'LarAgent ('.config('alfred.laragent.provider').')' : 'LarAgent selected but not installed — composer require maestroerror/laragent');
         } else {
             $key = (string) config('alfred.openai.api_key');

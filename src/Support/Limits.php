@@ -3,6 +3,7 @@
 namespace Atoria\Alfred\Support;
 
 use Atoria\Alfred\Alfred;
+use Atoria\Alfred\Tenancy\Tenancy;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -19,7 +20,7 @@ class Limits
         $userKey = $alfred->userKey($request);
         $keys = ['alfred:'.$name.':'.$userKey => max(1, $perMinute)];
         if (! str_starts_with($userKey, 'u:')) {
-            $keys['alfred:'.$name.':ip:'.sha1(app(\Atoria\Alfred\Tenancy\Tenancy::class)->current().'|'.(string) $request->ip())] = max(1, $guestPerIpPerMinute);
+            $keys['alfred:'.$name.':ip:'.sha1(app(Tenancy::class)->current().'|'.(string) $request->ip())] = max(1, $guestPerIpPerMinute);
         }
 
         foreach ($keys as $key => $max) {

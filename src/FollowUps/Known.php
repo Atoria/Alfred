@@ -2,7 +2,10 @@
 
 namespace Atoria\Alfred\FollowUps;
 
+use Atoria\Alfred\Context\ElementDescriptor;
+use Atoria\Alfred\Context\PageContext;
 use Atoria\Alfred\Explanations\Explanation;
+use Atoria\Alfred\Explanations\ExplanationKey;
 
 /**
  * What Alfred already found about an element (its explanation and the
@@ -15,7 +18,7 @@ class Known
     /**
      * @return array{id: int, title: string, summary: string, developer: array<string, mixed>, followups: array<int, array{question: string, answer: string, developer: ?string}>}|null
      */
-    public static function from(mixed $explanationId, mixed $threadId, string $owner, \Atoria\Alfred\Context\PageContext $page, \Atoria\Alfred\Context\ElementDescriptor $element): ?array
+    public static function from(mixed $explanationId, mixed $threadId, string $owner, PageContext $page, ElementDescriptor $element): ?array
     {
         if (! is_numeric($explanationId)) {
             return null;
@@ -24,7 +27,7 @@ class Known
         // element on this page (shared, or the person's own private one): an id
         // can't be used to read any other.
         $explanation = Explanation::query()->find((int) $explanationId);
-        if (! $explanation || ! \Atoria\Alfred\Explanations\ExplanationKey::accepts($explanation, $page, $element, $owner)) {
+        if (! $explanation || ! ExplanationKey::accepts($explanation, $page, $element, $owner)) {
             return null;
         }
 

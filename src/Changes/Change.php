@@ -2,7 +2,12 @@
 
 namespace Atoria\Alfred\Changes;
 
+use Atoria\Alfred\Alfred;
+use Atoria\Alfred\Tenancy\BelongsToTenant;
+use Atoria\Alfred\Tickets\Screenshots;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Support\Carbon;
 
 /**
@@ -53,11 +58,11 @@ use Illuminate\Support\Carbon;
  */
 class Change extends Model
 {
-    use \Atoria\Alfred\Tenancy\BelongsToTenant;
-    use \Illuminate\Database\Eloquent\Prunable;
+    use BelongsToTenant;
+    use Prunable;
 
     /** Old change records, for `php artisan model:prune` (config alfred.retention). */
-    public function prunable(): \Illuminate\Database\Eloquent\Builder
+    public function prunable(): Builder
     {
         $days = (int) config('alfred.retention.changes_days', 0);
         if ($days <= 0) {
@@ -71,7 +76,7 @@ class Change extends Model
 
     protected function pruning(): void
     {
-        $disk = app(\Atoria\Alfred\Tickets\Screenshots::class)->disk();
+        $disk = app(Screenshots::class)->disk();
         foreach ((array) $this->screenshots as $path) {
             $disk->delete($path);
         }
@@ -116,7 +121,7 @@ class Change extends Model
 
     public function getConnectionName(): ?string
     {
-        return \Atoria\Alfred\Alfred::connection() ?? parent::getConnectionName();
+        return Alfred::connection() ?? parent::getConnectionName();
     }
 
     public function hasEdits(): bool

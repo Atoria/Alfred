@@ -3,6 +3,7 @@
 namespace Atoria\Alfred\Http\Controllers;
 
 use Atoria\Alfred\Alfred;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,7 +18,7 @@ class AssetController extends Controller
     }
 
     /** The current session's CSRF token, so the overlay can recover from "419 page expired" without a reload. */
-    public function csrf(Request $request, Alfred $alfred): \Illuminate\Http\JsonResponse
+    public function csrf(Request $request, Alfred $alfred): JsonResponse
     {
         abort_unless($request->hasSession() && $alfred->canUse($alfred->user($request)), 403);
 

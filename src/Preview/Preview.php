@@ -2,10 +2,15 @@
 
 namespace Atoria\Alfred\Preview;
 
+use Atoria\Alfred\Alfred;
 use Atoria\Alfred\Changes\Change;
+use Atoria\Alfred\Changes\EditApplier;
+use Atoria\Alfred\Changes\EditMismatch;
+use Illuminate\Cookie\CookieValuePrefix;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\View\FileViewFinder;
+use Symfony\Component\HttpFoundation\Cookie;
 use Throwable;
 
 /**
@@ -105,7 +110,7 @@ class Preview
 
         try {
             $decrypted = app('encrypter')->decrypt($raw, false);
-            $id = \Illuminate\Cookie\CookieValuePrefix::validate($name, (string) $decrypted, array_filter([app('encrypter')->getKey(), ...(array) (method_exists(app('encrypter'), 'getPreviousKeys') ? app('encrypter')->getPreviousKeys() : [])]));
+            $id = CookieValuePrefix::validate($name, (string) $decrypted, array_filter([app('encrypter')->getKey(), ...(array) (method_exists(app('encrypter'), 'getPreviousKeys') ? app('encrypter')->getPreviousKeys() : [])]));
         } catch (Throwable) {
             $id = $raw; // the app doesn't encrypt its session cookie
         }
@@ -114,14 +119,14 @@ class Preview
     }
 
     /** The cookie that carries a preview: HttpOnly (page scripts can't read or steal it), Secure on https, Lax. */
-    public function cookie(\Illuminate\Http\Request $request, string $token): \Symfony\Component\HttpFoundation\Cookie
+    public function cookie(Request $request, string $token): Cookie
     {
-        return new \Symfony\Component\HttpFoundation\Cookie(self::COOKIE, $token, now()->addMinutes(max(1, (int) config('alfred.edit.preview_minutes', 120))), '/', null, $request->isSecure(), true, false, \Symfony\Component\HttpFoundation\Cookie::SAMESITE_LAX);
+        return new Cookie(self::COOKIE, $token, now()->addMinutes(max(1, (int) config('alfred.edit.preview_minutes', 120))), '/', null, $request->isSecure(), true, false, Cookie::SAMESITE_LAX);
     }
 
-    public function forgetCookie(\Illuminate\Http\Request $request): \Symfony\Component\HttpFoundation\Cookie
+    public function forgetCookie(Request $request): Cookie
     {
-        return new \Symfony\Component\HttpFoundation\Cookie(self::COOKIE, '', 1, '/', null, $request->isSecure(), true, false, \Symfony\Component\HttpFoundation\Cookie::SAMESITE_LAX);
+        return new Cookie(self::COOKIE, '', 1, '/', null, $request->isSecure(), true, false, Cookie::SAMESITE_LAX);
     }
 
     /**
@@ -161,7 +166,7 @@ class Preview
 
         try {
             // Plain query builder: during register() Eloquent has no connection resolver yet.
-            $row = app('db')->connection(\Atoria\Alfred\Alfred::connection())
+            $row = app('db')->connection(Alfred::connection())
                 ->table(config('alfred.changes_table', 'alfred_changes'))
                 ->where('id', $id)
                 ->first();
@@ -233,13 +238,13 @@ class Preview
         }
 
         // Exactly what "Apply" would write: same edits, same rules, same result.
-        foreach (\Atoria\Alfred\Changes\EditApplier::byFile((array) $change->edits) as $path => $edits) {
+        foreach (EditApplier::byFile((array) $change->edits) as $path => $edits) {
             if (! isset($files[$path])) {
                 continue;
             }
             try {
-                $after = \Atoria\Alfred\Changes\EditApplier::apply($files[$path], $edits);
-            } catch (\Atoria\Alfred\Changes\EditMismatch) {
+                $after = EditApplier::apply($files[$path], $edits);
+            } catch (EditMismatch) {
                 $after = null;
             }
             if ($after === null || (isset($change->files[$path]['after_sha1']) && sha1($after) !== $change->files[$path]['after_sha1'])) {

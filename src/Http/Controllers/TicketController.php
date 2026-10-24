@@ -4,16 +4,20 @@ namespace Atoria\Alfred\Http\Controllers;
 
 use Atoria\Alfred\Alfred;
 use Atoria\Alfred\Changes\Change;
+use Atoria\Alfred\Events\TicketCreated;
 use Atoria\Alfred\PullRequests\PullRequestException;
 use Atoria\Alfred\PullRequests\PullRequestOpener;
+use Atoria\Alfred\Support\Limits;
 use Atoria\Alfred\Tickets\Screenshots;
 use Atoria\Alfred\Tickets\TicketBuilder;
 use Atoria\Alfred\Tickets\TrackerException;
 use Atoria\Alfred\Tickets\Trackers\Tracker;
 use Atoria\Alfred\Tickets\Trackers\TrackerManager;
+use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
@@ -99,7 +103,7 @@ class TicketController extends Controller
         if ($user === null && ! config('alfred.guests.tickets', false)) {
             return response()->json(['message' => 'Sign in to send this to the tracker, or copy the ticket text instead.'], 403);
         }
-        if ($limited = \Atoria\Alfred\Support\Limits::hit($request, 'ticket', 10, 3)) {
+        if ($limited = Limits::hit($request, 'ticket', 10, 3)) {
             return $limited;
         }
 
@@ -111,8 +115,8 @@ class TicketController extends Controller
         }
         // One ticket per change, even when two people press "Create" at once:
         // claim it under a lock and re-check what's stored before creating.
-        $lock = \Illuminate\Support\Facades\Cache::store()->getStore() instanceof \Illuminate\Contracts\Cache\LockProvider
-            ? \Illuminate\Support\Facades\Cache::store()->getStore()->lock('alfred:ticket:'.$change->getKey(), 60)
+        $lock = Cache::store()->getStore() instanceof LockProvider
+            ? Cache::store()->getStore()->lock('alfred:ticket:'.$change->getKey(), 60)
             : null;
         if ($lock && ! $lock->get()) {
             return response()->json(['message' => 'A ticket for this is being created right now.'], 409);
@@ -146,7 +150,7 @@ class TicketController extends Controller
                 'ticketed_by' => $user ? (string) ($user->email ?? $user->getAuthIdentifier()) : null,
                 'ticketed_at' => now(),
             ])->save();
-            \Atoria\Alfred\Events\TicketCreated::dispatch($change, $change->ticketed_by);
+            TicketCreated::dispatch($change, $change->ticketed_by);
         } finally {
             $lock?->release();
         }

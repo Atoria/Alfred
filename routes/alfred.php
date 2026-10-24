@@ -5,6 +5,7 @@ use Atoria\Alfred\Http\Controllers\AssetController;
 use Atoria\Alfred\Http\Controllers\ChangeController;
 use Atoria\Alfred\Http\Controllers\ExplainController;
 use Atoria\Alfred\Http\Controllers\PullRequestController;
+use Atoria\Alfred\Http\Controllers\TaskController;
 use Atoria\Alfred\Http\Controllers\TicketController;
 use Atoria\Alfred\Http\Middleware\ResolveTenant;
 use Illuminate\Support\Facades\Route;
@@ -24,7 +25,7 @@ Route::group([
     Route::get('csrf', [AssetController::class, 'csrf'])->name('csrf');
 
     // Long AI work answers with a task id; the overlay checks back here.
-    Route::get('tasks/{task}', [\Atoria\Alfred\Http\Controllers\TaskController::class, 'show'])->name('tasks.show');
+    Route::get('tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
 
     // Private access link for signed-out visitors (alfred.guests).
     Route::get('access', [AccessController::class, 'unlock'])->middleware('throttle:10,1')->name('access');

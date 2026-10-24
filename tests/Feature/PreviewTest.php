@@ -5,8 +5,10 @@ namespace Atoria\Alfred\Tests\Feature;
 use Atoria\Alfred\Changes\Change;
 use Atoria\Alfred\Preview\ClassName;
 use Atoria\Alfred\Preview\Preview;
+use Atoria\Alfred\Preview\PreviewErrors;
 use Atoria\Alfred\Tests\TestCase;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 
@@ -153,8 +155,8 @@ PHP);
         $this->assertStringContainsString('resources/views/board.blade.php', $html, 'says where (the previewed file)');
 
         // Remembered for "Refine": the agent gets the error with the next attempt.
-        $change = \Atoria\Alfred\Changes\Change::query()->latest('id')->first();
-        $this->assertStringContainsString('alfred_test_function_that_does_not_exist', (string) \Atoria\Alfred\Preview\PreviewErrors::get($change->id));
+        $change = Change::query()->latest('id')->first();
+        $this->assertStringContainsString('alfred_test_function_that_does_not_exist', (string) PreviewErrors::get($change->id));
         $this->assertStringContainsString('click <em>Refine</em>', $html);
     }
 
@@ -293,7 +295,7 @@ PHP);
 
         // A colleague who got hold of the cookie (also allowed to edit): normal page, cookie removed.
         $colleague = $this->user('verifier2@example.com');
-        \Illuminate\Support\Facades\Gate::define('editAlfred', fn ($u = null) => $u !== null);
+        Gate::define('editAlfred', fn ($u = null) => $u !== null);
         $res = $this->actingAs($colleague)->withUnencryptedCookie(Preview::COOKIE, $token)->get('/board');
         $res->assertRedirect('/board');
         $this->assertSame('', (string) $res->getCookie(Preview::COOKIE, false)?->getValue());
@@ -308,7 +310,7 @@ PHP);
 
         // Another browser (or the same one after signing out: a new session) runs nothing previewed.
         $hit = false;
-        \Illuminate\Support\Facades\Route::middleware('web')->get('/side-effect', function () use (&$hit) {
+        Route::middleware('web')->get('/side-effect', function () use (&$hit) {
             $hit = str_contains(app($this->class)->show(), 'CHANGED');
 
             return 'ok';
@@ -324,7 +326,7 @@ PHP);
         $change = $this->proposal($this->classPath, 'return $value;', "return 'CHANGED';");
         $token = $this->previewToken($manager, $change);
 
-        \Illuminate\Support\Facades\Gate::define('editAlfred', fn ($u = null) => false);
+        Gate::define('editAlfred', fn ($u = null) => false);
         $this->actingAs($manager)->withUnencryptedCookie(Preview::COOKIE, $token)->get('/board')->assertRedirect('/board');
     }
 

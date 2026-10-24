@@ -3,6 +3,7 @@
 namespace Atoria\Alfred\PullRequests\Providers;
 
 use Atoria\Alfred\PullRequests\PullRequestDraft;
+use Atoria\Alfred\PullRequests\PullRequestException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 
@@ -73,7 +74,7 @@ class GitHubProvider extends BaseGitProvider
         if ($draft->labels) {
             try {
                 $this->call('the labels', fn () => $this->http()->post("{$repo}/issues/{$number}/labels", ['labels' => $draft->labels]));
-            } catch (\Atoria\Alfred\PullRequests\PullRequestException $e) {
+            } catch (PullRequestException $e) {
                 $warnings[] = $e->getMessage();
             }
         }

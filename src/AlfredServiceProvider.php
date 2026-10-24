@@ -2,27 +2,44 @@
 
 namespace Atoria\Alfred;
 
+use Atoria\Alfred\Access\Guests;
 use Atoria\Alfred\Agent\Agent;
 use Atoria\Alfred\Agent\PromptBuilder;
 use Atoria\Alfred\Console\ClearCommand;
+use Atoria\Alfred\Console\DoctorCommand;
+use Atoria\Alfred\Console\UsageCommand;
 use Atoria\Alfred\Context\ContextStore;
 use Atoria\Alfred\Context\RequestRecorder;
 use Atoria\Alfred\Http\Middleware\RecordAndInject;
+use Atoria\Alfred\Http\Middleware\ResolveTenant;
+use Atoria\Alfred\Llm\LarAgentClient;
 use Atoria\Alfred\Llm\LlmClient;
 use Atoria\Alfred\Llm\OpenAiClient;
 use Atoria\Alfred\Preview\Preview;
+use Atoria\Alfred\Preview\PreviewFailure;
 use Atoria\Alfred\Privacy\Redactor;
+use Atoria\Alfred\PullRequests\Providers\GitProviderManager;
 use Atoria\Alfred\Security\PathGuard;
+use Atoria\Alfred\Tenancy\Tenancy;
+use Atoria\Alfred\Tickets\Trackers\TrackerManager;
+use Composer\InstalledVersions;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Auth\Events\Authenticated;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
 class AlfredServiceProvider extends ServiceProvider
@@ -32,11 +49,11 @@ class AlfredServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/alfred.php', 'alfred');
 
         $this->app->singleton(Alfred::class);
-        $this->app->singleton(\Atoria\Alfred\Tickets\Trackers\TrackerManager::class);
-        $this->app->singleton(\Atoria\Alfred\PullRequests\Providers\GitProviderManager::class);
+        $this->app->singleton(TrackerManager::class);
+        $this->app->singleton(GitProviderManager::class);
         $this->app->singleton(ContextStore::class);
-        $this->app->singleton(\Atoria\Alfred\Tenancy\Tenancy::class);
-        $this->app->singleton(\Atoria\Alfred\Access\Guests::class);
+        $this->app->singleton(Tenancy::class);
+        $this->app->singleton(Guests::class);
         $this->app->scoped(RequestRecorder::class);
 
         // Built per use so runtime config changes (and tests) apply.
@@ -45,7 +62,7 @@ class AlfredServiceProvider extends ServiceProvider
         $this->app->bind(LlmClient::class, function () {
             return match ($provider = config('alfred.provider', 'openai')) {
                 'openai' => new OpenAiClient((array) config('alfred.openai', [])),
-                'laragent' => new \Atoria\Alfred\Llm\LarAgentClient((array) config('alfred.laragent', [])),
+                'laragent' => new LarAgentClient((array) config('alfred.laragent', [])),
                 default => throw new InvalidArgumentException("Unknown Alfred provider [{$provider}]."),
             };
         });
@@ -65,15 +82,15 @@ class AlfredServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->publishes([__DIR__.'/../config/alfred.php' => config_path('alfred.php')], 'alfred-config');
             $this->publishes([__DIR__.'/../resources/js/alfred.js' => public_path('vendor/alfred/alfred.js')], 'alfred-assets');
-            $this->commands([ClearCommand::class, \Atoria\Alfred\Console\UsageCommand::class, \Atoria\Alfred\Console\DoctorCommand::class]);
+            $this->commands([ClearCommand::class, UsageCommand::class, DoctorCommand::class]);
         }
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->defineGates();
 
-        if (class_exists(\Illuminate\Foundation\Console\AboutCommand::class)) {
-            \Illuminate\Foundation\Console\AboutCommand::add('Alfred', fn () => [
-                'Version' => \Composer\InstalledVersions::isInstalled('atoria/alfred') ? (string) \Composer\InstalledVersions::getPrettyVersion('atoria/alfred') : 'dev',
+        if (class_exists(AboutCommand::class)) {
+            AboutCommand::add('Alfred', fn () => [
+                'Version' => InstalledVersions::isInstalled('atoria/alfred') ? (string) InstalledVersions::getPrettyVersion('atoria/alfred') : 'dev',
                 'Enabled' => config('alfred.enabled') ? '<fg=green;options=bold>ENABLED</>' : 'OFF',
                 'AI provider' => (string) config('alfred.provider', 'openai'),
                 'Changes' => config('alfred.edit.enabled') ? (string) config('alfred.edit.mode', 'propose') : 'off',
@@ -90,7 +107,7 @@ class AlfredServiceProvider extends ServiceProvider
         $this->loadRoutesFrom(__DIR__.'/../routes/alfred.php');
 
         if (class_exists(EncryptCookies::class) && method_exists(EncryptCookies::class, 'except')) { // @phpstan-ignore function.alreadyNarrowedType (apps may swap the class)
-            EncryptCookies::except([\Atoria\Alfred\Access\Guests::COOKIE, Preview::COOKIE]); // signed by Alfred itself
+            EncryptCookies::except([Guests::COOKIE, Preview::COOKIE]); // signed by Alfred itself
         }
 
         $kernel = $this->app->make(Kernel::class);
@@ -98,7 +115,7 @@ class AlfredServiceProvider extends ServiceProvider
             $kernel->pushMiddleware(RecordAndInject::class);
         }
         if (method_exists($kernel, 'prependToMiddlewarePriority')) { // @phpstan-ignore function.alreadyNarrowedType (custom kernels)
-            $kernel->prependToMiddlewarePriority(\Atoria\Alfred\Http\Middleware\ResolveTenant::class);
+            $kernel->prependToMiddlewarePriority(ResolveTenant::class);
         }
 
         $this->listen();
@@ -114,7 +131,7 @@ class AlfredServiceProvider extends ServiceProvider
     protected function catchBrokenPreviews(): void
     {
         try {
-            $handler = $this->app->make(\Illuminate\Contracts\Debug\ExceptionHandler::class);
+            $handler = $this->app->make(ExceptionHandler::class);
         } catch (Throwable) {
             return;
         }
@@ -128,13 +145,13 @@ class AlfredServiceProvider extends ServiceProvider
                 return null;
             }
             // Ordinary "not found" / "forbidden" / validation answers aren't the preview's fault.
-            if ($e instanceof \Illuminate\Validation\ValidationException
-                || $e instanceof \Illuminate\Auth\AuthenticationException
-                || ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface && $e->getStatusCode() < 500)) {
+            if ($e instanceof ValidationException
+                || $e instanceof AuthenticationException
+                || ($e instanceof HttpExceptionInterface && $e->getStatusCode() < 500)) {
                 return null;
             }
 
-            return \Atoria\Alfred\Preview\PreviewFailure::response($request, $preview, $e);
+            return PreviewFailure::response($request, $preview, $e);
         });
     }
 
@@ -213,7 +230,7 @@ class AlfredServiceProvider extends ServiceProvider
 
         foreach ((array) config($key, []) as $entry) {
             $entry = strtolower(trim((string) $entry));
-            if ($entry !== '' && ($entry === $email || (str_contains($entry, '*') && \Illuminate\Support\Str::is($entry, $email)))) {
+            if ($entry !== '' && ($entry === $email || (str_contains($entry, '*') && Str::is($entry, $email)))) {
                 return true;
             }
         }
@@ -233,7 +250,7 @@ class AlfredServiceProvider extends ServiceProvider
         });
 
         // Once the user is known: someone who may not use Alfred isn't recorded any further.
-        Event::listen(\Illuminate\Auth\Events\Authenticated::class, function ($event) use ($recorder) {
+        Event::listen(Authenticated::class, function ($event) use ($recorder) {
             $r = $recorder();
             if (! $r->active()) {
                 return;

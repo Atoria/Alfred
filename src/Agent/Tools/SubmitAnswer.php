@@ -3,6 +3,7 @@
 namespace Atoria\Alfred\Agent\Tools;
 
 use Atoria\Alfred\Agent\AgentState;
+use Atoria\Alfred\Security\SecretScrubber;
 
 /** Terminal tool for a follow-up question: a plain answer, plus an optional note for developers. */
 class SubmitAnswer implements Tool
@@ -60,7 +61,7 @@ class SubmitAnswer implements Tool
 
         $developer = isset($arguments['developer']) && trim((string) $arguments['developer']) !== '' ? trim((string) $arguments['developer']) : null;
 
-        $state->submission = \Atoria\Alfred\Security\SecretScrubber::scrubAll([
+        $state->submission = SecretScrubber::scrubAll([
             'answer' => mb_substr($answer, 0, 4000),
             'developer' => $developer !== null ? mb_substr($developer, 0, 4000) : null,
             'confidence' => in_array($arguments['confidence'] ?? null, ['high', 'medium', 'low'], true) ? $arguments['confidence'] : 'medium',

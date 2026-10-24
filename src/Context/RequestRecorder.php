@@ -2,6 +2,7 @@
 
 namespace Atoria\Alfred\Context;
 
+use Atoria\Alfred\Support\SafeUrl;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -55,7 +56,7 @@ class RequestRecorder
     {
         $this->continuation = false;
 
-        return $this->context = new PageContext(Str::random(40), null, \Atoria\Alfred\Support\SafeUrl::clean($request->fullUrl()));
+        return $this->context = new PageContext(Str::random(40), null, SafeUrl::clean($request->fullUrl()));
     }
 
     /** Start recording a follow-up request from an already-recorded page. */
@@ -63,7 +64,7 @@ class RequestRecorder
     {
         $this->continuation = true;
 
-        return $this->context = new PageContext($token, null, \Atoria\Alfred\Support\SafeUrl::clean($request->fullUrl()));
+        return $this->context = new PageContext($token, null, SafeUrl::clean($request->fullUrl()));
     }
 
     public function captureRoute(Request $request): void

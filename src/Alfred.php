@@ -3,7 +3,10 @@
 namespace Atoria\Alfred;
 
 use Atoria\Alfred\Access\Guests;
+use Atoria\Alfred\Changes\Change;
 use Atoria\Alfred\Context\RequestRecorder;
+use Atoria\Alfred\Preview\Preview;
+use Atoria\Alfred\PullRequests\Providers\GitProviderManager;
 use Atoria\Alfred\Tenancy\Tenancy;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
@@ -107,7 +110,7 @@ class Alfred
     }
 
     /** Editors see every change; people who can only report see their own requests. */
-    public function canSeeChange(Request $request, \Atoria\Alfred\Changes\Change $change): bool
+    public function canSeeChange(Request $request, Change $change): bool
     {
         $user = $this->user($request);
 
@@ -180,7 +183,7 @@ class Alfred
     /** What the overlay needs to show the "Previewing…" bar. */
     protected function previewState(): ?array
     {
-        $preview = app(\Atoria\Alfred\Preview\Preview::class);
+        $preview = app(Preview::class);
         $change = $preview->active();
 
         if (! $change) {
@@ -191,7 +194,7 @@ class Alfred
             'id' => $change->id,
             'summary' => $change->summary,
             'skipped' => $preview->skipped(),
-            'cookie' => \Atoria\Alfred\Preview\Preview::COOKIE,
+            'cookie' => Preview::COOKIE,
         ];
     }
 
@@ -259,7 +262,7 @@ class Alfred
             'canReport' => $this->canReport($user),
             'canViewCode' => $this->canViewCode($user),
             'followUps' => (bool) config('alfred.followups.enabled', true),
-            'pullRequests' => $this->canEdit($user) && app(\Atoria\Alfred\PullRequests\Providers\GitProviderManager::class)->available() !== [],
+            'pullRequests' => $this->canEdit($user) && app(GitProviderManager::class)->available() !== [],
             'editMode' => $this->editMode(),
             'screenshots' => (bool) config('alfred.screenshots.enabled', true),
             'preview' => $this->previewState(),

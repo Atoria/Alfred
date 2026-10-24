@@ -2,6 +2,8 @@
 
 namespace Atoria\Alfred\Tests\Feature;
 
+use Atoria\Alfred\AlfredServiceProvider;
+use Atoria\Alfred\Explanations\Explanation;
 use Atoria\Alfred\Llm\LarAgentClient;
 use Atoria\Alfred\Llm\LlmClient;
 use Atoria\Alfred\Llm\LlmException;
@@ -9,6 +11,11 @@ use Atoria\Alfred\Tests\Fixtures\LarAgent\RecordingChatDriver;
 use Atoria\Alfred\Tests\Fixtures\LarAgent\RecordingClaudeDriver;
 use Atoria\Alfred\Tests\Fixtures\LarAgent\RecordingResponsesDriver;
 use Atoria\Alfred\Tests\TestCase;
+use Illuminate\Testing\TestResponse;
+use LarAgent\Drivers\Anthropic\ClaudeDriver;
+use LarAgent\Drivers\OpenAi\OllamaDriver;
+use LarAgent\Drivers\OpenAi\OpenAiResponsesDriver;
+use LarAgent\Drivers\OpenAi\OpenRouter;
 use LarAgent\Messages\ToolCallMessage;
 use LarAgent\ToolCall;
 
@@ -56,7 +63,7 @@ class LarAgentTest extends TestCase
         ]);
     }
 
-    protected function explain(): \Illuminate\Testing\TestResponse
+    protected function explain(): TestResponse
     {
         $user = $this->user();
 
@@ -92,7 +99,7 @@ class LarAgentTest extends TestCase
         $this->assertSame('call_1', $outputs[0]['call_id']);
         $this->assertStringContainsString('$booked = Shift::query()->booked()->count();', $outputs[0]['output']);
 
-        $e = \Atoria\Alfred\Explanations\Explanation::query()->first();
+        $e = Explanation::query()->first();
         $this->assertSame(200, $e->input_tokens);
         $this->assertSame(40, $e->output_tokens);
         $this->assertSame('gpt-5-mini', $e->model);
@@ -110,14 +117,14 @@ class LarAgentTest extends TestCase
         $this->assertSame(['type' => 'function', 'name' => 'submit_explanation'], $driver->payloads[1]['tool_choice']);
 
         // Chat Completions (OpenAI, OpenRouter, Gemini's OpenAI endpoint, Ollama…)
-        \Atoria\Alfred\Explanations\Explanation::query()->delete();
+        Explanation::query()->delete();
         $driver = (new RecordingChatDriver(['model' => 'gpt-4.1-mini']))->recording([$read('c1'), $this->submit('c2')]);
         $this->useDriver($driver, ['model' => 'gpt-4.1-mini']);
         $this->explain()->assertOk();
         $this->assertSame(['type' => 'function', 'function' => ['name' => 'submit_explanation']], $driver->payloads[1]['tool_choice']);
 
         // Anthropic Claude
-        \Atoria\Alfred\Explanations\Explanation::query()->delete();
+        Explanation::query()->delete();
         $driver = (new RecordingClaudeDriver(['model' => 'claude-sonnet-4-5', 'apiKey' => 'test']))->recording([$read('c1'), $this->submit('c2')]);
         $this->useDriver($driver, ['model' => 'claude-sonnet-4-5']);
         $this->explain()->assertOk();
@@ -131,7 +138,7 @@ class LarAgentTest extends TestCase
 
         // Chat Completions: only reasoning models accept reasoning_effort.
         foreach (['gpt-4.1-mini' => false, 'gpt-5-mini' => true, 'openai/o4-mini' => true, 'qwen3:8b' => true, 'llama-3.3-70b' => false] as $model => $sent) {
-            \Atoria\Alfred\Explanations\Explanation::query()->delete();
+            Explanation::query()->delete();
             $driver = (new RecordingChatDriver(['model' => $model]))->recording($reply());
             $this->useDriver($driver, ['model' => $model]);
             $this->explain()->assertOk();
@@ -139,7 +146,7 @@ class LarAgentTest extends TestCase
         }
 
         // Claude: never (thinking can't be combined with forcing a tool, and isn't replayed between tool turns).
-        \Atoria\Alfred\Explanations\Explanation::query()->delete();
+        Explanation::query()->delete();
         $driver = (new RecordingClaudeDriver(['model' => 'claude-sonnet-4-5', 'apiKey' => 'test']))->recording($reply());
         $this->useDriver($driver, ['model' => 'claude-sonnet-4-5', 'reasoning' => 'on']);
         $this->explain()->assertOk();
@@ -148,13 +155,13 @@ class LarAgentTest extends TestCase
         $this->assertSame(16000, $driver->payloads[0]['max_tokens'] ?? null, 'long enough for an explanation (Claude defaults to 1024)');
 
         // off means off; on forces it for any chat model.
-        \Atoria\Alfred\Explanations\Explanation::query()->delete();
+        Explanation::query()->delete();
         $driver = (new RecordingResponsesDriver(['model' => 'gpt-5-mini']))->recording($reply());
         $this->useDriver($driver, ['reasoning' => 'off']);
         $this->explain()->assertOk();
         $this->assertArrayNotHasKey('reasoning', $driver->payloads[0]);
 
-        \Atoria\Alfred\Explanations\Explanation::query()->delete();
+        Explanation::query()->delete();
         $driver = (new RecordingChatDriver(['model' => 'my-custom-model']))->recording($reply());
         $this->useDriver($driver, ['model' => 'my-custom-model', 'reasoning' => 'on']);
         $this->explain()->assertOk();
@@ -222,7 +229,7 @@ class LarAgentTest extends TestCase
         ]);
         $this->app->forgetInstance(LlmClient::class);
         $this->app->offsetUnset(LlmClient::class);
-        (new \Atoria\Alfred\AlfredServiceProvider($this->app))->register();
+        (new AlfredServiceProvider($this->app))->register();
 
         $client = $this->app->make(LlmClient::class);
         $this->assertInstanceOf(LarAgentClient::class, $client);
@@ -233,9 +240,9 @@ class LarAgentTest extends TestCase
     public function test_a_model_is_always_known(): void
     {
         config(['alfred.openai.model' => 'gpt-5-mini', 'laragent.providers' => [
-            'openai_responses' => ['driver' => \LarAgent\Drivers\OpenAi\OpenAiResponsesDriver::class, 'api_key' => null],
-            'ollama' => ['driver' => \LarAgent\Drivers\OpenAi\OllamaDriver::class, 'api_key' => 'ollama'],
-            'claude' => ['driver' => \LarAgent\Drivers\Anthropic\ClaudeDriver::class, 'model' => 'claude-sonnet-4-5'],
+            'openai_responses' => ['driver' => OpenAiResponsesDriver::class, 'api_key' => null],
+            'ollama' => ['driver' => OllamaDriver::class, 'api_key' => 'ollama'],
+            'claude' => ['driver' => ClaudeDriver::class, 'model' => 'claude-sonnet-4-5'],
         ]]);
 
         $this->assertSame('gpt-5-mini', (new LarAgentClient(['provider' => 'openai_responses']))->model(), 'stock OpenAI providers have no model');
@@ -255,7 +262,7 @@ class LarAgentTest extends TestCase
         config([
             'alfred.openai.api_key' => 'sk-alfred',
             'laragent.providers.openai_responses' => ['driver' => RecordingResponsesDriver::class, 'api_key' => null],
-            'laragent.providers.openrouter' => ['driver' => \LarAgent\Drivers\OpenAi\OpenRouter::class, 'api_key' => null, 'model' => 'x'],
+            'laragent.providers.openrouter' => ['driver' => OpenRouter::class, 'api_key' => null, 'model' => 'x'],
             'laragent.providers.own' => ['driver' => RecordingResponsesDriver::class, 'api_key' => 'sk-own'],
         ]);
         $key = fn (string $provider) => (fn () => $this->apiKey($this->providerConfig()))->call(new LarAgentClient(['provider' => $provider]));

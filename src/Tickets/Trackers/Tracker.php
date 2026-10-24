@@ -3,6 +3,7 @@
 namespace Atoria\Alfred\Tickets\Trackers;
 
 use Atoria\Alfred\Tickets\Ticket;
+use Atoria\Alfred\Tickets\TrackerException;
 
 /**
  * A place tickets go: Jira, GitHub Issues, Trello, … Implement this to add
@@ -27,7 +28,7 @@ interface Tracker
      *
      * @return array{key: string, url: string, warnings?: string[]}
      *
-     * @throws \Atoria\Alfred\Tickets\TrackerException
+     * @throws TrackerException
      */
     public function create(Ticket $ticket): array;
 }

@@ -74,7 +74,7 @@ class TextMatcherTest extends TestCase
     {
         $file = "<?php\nclass A\n{\n\tpublic function x()\n\t{\n\t\treturn 1;\n\t}\n}\n";
 
-        $r = (new \Atoria\Alfred\Changes\TextMatcher)->locate($file, '        return 1;', "        if (\$y) {\n            return 2;\n        }\n        return 1;");
+        $r = (new TextMatcher)->locate($file, '        return 1;', "        if (\$y) {\n            return 2;\n        }\n        return 1;");
 
         $this->assertSame("\t\treturn 1;", $r['search']);
         $this->assertSame("\t\tif (\$y) {\n\t\t    return 2;\n\t\t}\n\t\treturn 1;", $r['replace']);

@@ -3,6 +3,7 @@
 namespace Atoria\Alfred\Llm;
 
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -57,7 +58,7 @@ class OpenAiClient implements LlmClient
         $request = Http::withToken((string) $this->config['api_key'])
             ->acceptJson()
             ->timeout((int) ($this->config['timeout'] ?? 120))
-            ->retry(2, 500, fn ($e) => $e instanceof ConnectionException || ($e instanceof \Illuminate\Http\Client\RequestException && in_array($e->response->status(), [429, 500, 502, 503], true)), throw: false);
+            ->retry(2, 500, fn ($e) => $e instanceof ConnectionException || ($e instanceof RequestException && in_array($e->response->status(), [429, 500, 502, 503], true)), throw: false);
 
         if (! empty($this->config['organization'])) {
             $request = $request->withHeaders(['OpenAI-Organization' => $this->config['organization']]);

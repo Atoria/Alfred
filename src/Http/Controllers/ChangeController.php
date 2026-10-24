@@ -11,11 +11,16 @@ use Atoria\Alfred\Context\CodeLocator;
 use Atoria\Alfred\Context\ContextStore;
 use Atoria\Alfred\Context\ElementDescriptor;
 use Atoria\Alfred\Explanations\TooManyGenerations;
+use Atoria\Alfred\FollowUps\Known;
 use Atoria\Alfred\Llm\LlmException;
 use Atoria\Alfred\Preview\Preview;
 use Atoria\Alfred\Security\AccessDenied;
+use Atoria\Alfred\Security\Screening;
+use Atoria\Alfred\Support\Limits;
+use Atoria\Alfred\Tasks\Background;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Str;
@@ -26,7 +31,7 @@ class ChangeController extends Controller
 {
     public function __construct(
         protected Alfred $alfred,
-        protected \Atoria\Alfred\Tasks\Background $background,
+        protected Background $background,
         protected ContextStore $store,
     ) {}
 
@@ -59,12 +64,12 @@ class ChangeController extends Controller
             return response()->json(['message' => 'This page has expired for '.Alfred::name().'. Reload the page and try again.'], 410);
         }
 
-        if ($refused = app(\Atoria\Alfred\Security\Screening::class)->refuse($request, $data['instruction'], 'change')) {
+        if ($refused = app(Screening::class)->refuse($request, $data['instruction'], 'change')) {
             return $refused;
         }
 
         $element = ElementDescriptor::fromArray($data['element']);
-        $known = \Atoria\Alfred\FollowUps\Known::from($data['explanation'] ?? null, $data['thread'] ?? null, $this->alfred->userKey($request), $page, $element);
+        $known = Known::from($data['explanation'] ?? null, $data['thread'] ?? null, $this->alfred->userKey($request), $page, $element);
 
         // A change takes many AI calls; run it after the response so proxies don't time out.
         return $this->background->run($request, function () use ($request, $changes, $page, $element, $data, $known): JsonResponse {
@@ -108,7 +113,7 @@ class ChangeController extends Controller
             return response()->json(['message' => "A {$change->status} change can't be refined. Ask for a new change instead."], 409);
         }
 
-        if ($refused = app(\Atoria\Alfred\Security\Screening::class)->refuse($request, $data['feedback'], 'refine')) {
+        if ($refused = app(Screening::class)->refuse($request, $data['feedback'], 'refine')) {
             return $refused;
         }
 
@@ -150,7 +155,7 @@ class ChangeController extends Controller
             return response()->json(['message' => 'This page has expired for '.Alfred::name().'. Reload the page and try again.'], 410);
         }
 
-        if ($limited = \Atoria\Alfred\Support\Limits::hit($request, 'report', 20, 5)) {
+        if ($limited = Limits::hit($request, 'report', 20, 5)) {
             return $limited;
         }
 
@@ -171,8 +176,8 @@ class ChangeController extends Controller
                 'components' => $element->components,
                 'selector' => $element->selector,
             ],
-            'location' => $locator->locate($page, $element) + array_filter(['explanation' => \Atoria\Alfred\FollowUps\Known::forTicket(
-                \Atoria\Alfred\FollowUps\Known::from($data['explanation'] ?? null, $data['thread'] ?? null, $this->alfred->userKey($request), $page, $element)
+            'location' => $locator->locate($page, $element) + array_filter(['explanation' => Known::forTicket(
+                Known::from($data['explanation'] ?? null, $data['thread'] ?? null, $this->alfred->userKey($request), $page, $element)
             )]),
             'instruction' => $text,
             'summary' => Str::limit(Str::before($text, "\n"), 120, '…'),
@@ -236,7 +241,7 @@ class ChangeController extends Controller
     }
 
     /** Clears the preview cookie and goes back. Harmless for anyone, so no permission check. */
-    public function stopPreview(Request $request): \Illuminate\Http\RedirectResponse
+    public function stopPreview(Request $request): RedirectResponse
     {
         $to = $request->query('to');
         if (! is_string($to) || ! str_starts_with($to, '/') || str_starts_with($to, '//') || str_contains($to, '\\')) {

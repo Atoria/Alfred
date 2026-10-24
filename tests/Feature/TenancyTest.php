@@ -3,10 +3,17 @@
 namespace Atoria\Alfred\Tests\Feature;
 
 use Atoria\Alfred\Alfred;
+use Atoria\Alfred\Context\ElementDescriptor;
+use Atoria\Alfred\Context\PageContext;
 use Atoria\Alfred\Explanations\Explanation;
+use Atoria\Alfred\Explanations\ExplanationKey;
 use Atoria\Alfred\Tenancy\Tenancy;
 use Atoria\Alfred\Tests\Fixtures\Tenancy\FakeTenancy;
+use Atoria\Alfred\Tests\Fixtures\Tenancy\TaggingCacheManager;
 use Atoria\Alfred\Tests\TestCase;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 
 class TenancyTest extends TestCase
 {
@@ -75,8 +82,8 @@ class TenancyTest extends TestCase
 
     public function test_works_with_a_tenancy_cache_that_cannot_tag(): void
     {
-        $this->app->singleton('cache', fn ($app) => new \Atoria\Alfred\Tests\Fixtures\Tenancy\TaggingCacheManager($app));
-        \Illuminate\Support\Facades\Cache::clearResolvedInstances();
+        $this->app->singleton('cache', fn ($app) => new TaggingCacheManager($app));
+        Cache::clearResolvedInstances();
 
         $user = $this->user();
         [$config] = $this->pageIn('acme', $user);
@@ -169,7 +176,7 @@ class TenancyTest extends TestCase
     {
         $key = function (?string $tenant) {
             FakeTenancy::$current = $tenant;
-            $k = \Atoria\Alfred\Explanations\ExplanationKey::for(new \Atoria\Alfred\Context\PageContext('t', null, '/'), \Atoria\Alfred\Context\ElementDescriptor::fromArray($this->element()));
+            $k = ExplanationKey::for(new PageContext('t', null, '/'), ElementDescriptor::fromArray($this->element()));
             FakeTenancy::$current = null;
 
             return $k;
@@ -192,7 +199,7 @@ class TenancyTest extends TestCase
         $user = $this->user();
         FakeTenancy::$current = 'acme';
 
-        $request = \Illuminate\Http\Request::create('/');
+        $request = Request::create('/');
         $request->setUserResolver(fn () => $user);
 
         $this->assertSame('u:web:acme:'.$user->id, app(Alfred::class)->userKey($request));
@@ -204,6 +211,6 @@ class TenancyTest extends TestCase
             (require $file)->up();
         }
 
-        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasColumn('alfred_changes', 'pr_provider'));
+        $this->assertTrue(Schema::hasColumn('alfred_changes', 'pr_provider'));
     }
 }

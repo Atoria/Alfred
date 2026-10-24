@@ -3,6 +3,7 @@
 namespace Atoria\Alfred\PullRequests\Providers;
 
 use Atoria\Alfred\PullRequests\PullRequestDraft;
+use Atoria\Alfred\PullRequests\PullRequestException;
 
 /**
  * Where pull requests go: GitHub, GitLab, Bitbucket, … Implement this to add
@@ -29,7 +30,7 @@ interface GitProvider
      *
      * @return array{key: string, url: string, branch: string, warnings: string[]}
      *
-     * @throws \Atoria\Alfred\PullRequests\PullRequestException
+     * @throws PullRequestException
      */
     public function open(PullRequestDraft $draft): array;
 }

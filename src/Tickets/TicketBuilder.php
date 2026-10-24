@@ -2,6 +2,7 @@
 
 namespace Atoria\Alfred\Tickets;
 
+use Atoria\Alfred\Alfred;
 use Atoria\Alfred\Changes\Change;
 use Atoria\Alfred\Context\CodeLocator;
 use Illuminate\Support\Str;
@@ -69,7 +70,7 @@ class TicketBuilder
         }
 
         $blocks[] = Adf::rule();
-        $blocks[] = Adf::paragraph(['Created with '.\Atoria\Alfred\Alfred::name().' from change #'.$change->id.'.']);
+        $blocks[] = Adf::paragraph(['Created with '.Alfred::name().' from change #'.$change->id.'.']);
 
         return Adf::doc($blocks);
     }
@@ -98,7 +99,7 @@ class TicketBuilder
             title: trim($title),
             description: trim($description),
             markdown: trim($description)."\n\n".$this->markdownDetails($change, $includeDiff),
-            footer: "---\n_Created with ".\Atoria\Alfred\Alfred::name()." from change #{$change->id}._",
+            footer: "---\n_Created with ".Alfred::name()." from change #{$change->id}._",
             adf: $this->adf($change, $description, $includeDiff, array_keys($urls)),
             files: $files,
             screenshotUrls: $urls,

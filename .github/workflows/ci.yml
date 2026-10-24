@@ -52,6 +52,12 @@ jobs:
       - name: Pin Laravel ${{ matrix.laravel }}
         run: composer require --dev --no-update --no-interaction "illuminate/support:^${{ matrix.laravel }}.0" "orchestra/testbench:^${{ matrix.testbench }}.0"
 
+      # Composer refuses versions with known advisories while resolving. Old
+      # Laravel/testbench releases (lowest deps, Laravel 11) have some; these
+      # jobs only test compatibility, the "quality" job audits what ships.
+      - name: Allow advisory-affected versions for compatibility testing
+        run: composer config audit.block-insecure false
+
       - name: Install dependencies (${{ matrix.deps }})
         run: |
           if [ "${{ matrix.deps }}" = "lowest" ]; then
@@ -85,6 +91,7 @@ jobs:
 
       - name: Install dependencies with maestroerror/laragent
         run: |
+          composer config audit.block-insecure false
           composer require --dev --no-update --no-interaction "illuminate/support:^12.0" "orchestra/testbench:^10.0" maestroerror/laragent
           composer update --prefer-stable --prefer-dist --no-interaction --no-progress
 

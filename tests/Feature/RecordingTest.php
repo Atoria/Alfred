@@ -3,7 +3,11 @@
 namespace Atoria\Alfred\Tests\Feature;
 
 use Atoria\Alfred\Context\ContextStore;
+use Atoria\Alfred\Context\RequestRecorder;
 use Atoria\Alfred\Tests\TestCase;
+use Illuminate\Auth\Events\Authenticated;
+use Illuminate\Foundation\Auth\User;
+use Illuminate\Support\Facades\Route;
 
 class RecordingTest extends TestCase
 {
@@ -102,12 +106,12 @@ class RecordingTest extends TestCase
 
     protected function probe(): void
     {
-        \Illuminate\Support\Facades\Route::middleware('web')->get('/probe', function () {
+        Route::middleware('web')->get('/probe', function () {
             if (request()->has('as')) {
-                event(new \Illuminate\Auth\Events\Authenticated('web', \Illuminate\Foundation\Auth\User::query()->findOrFail(request('as'))));
+                event(new Authenticated('web', User::query()->findOrFail(request('as'))));
             }
 
-            return app(\Atoria\Alfred\Context\RequestRecorder::class)->active() ? 'recording' : 'not recording';
+            return app(RequestRecorder::class)->active() ? 'recording' : 'not recording';
         });
     }
 

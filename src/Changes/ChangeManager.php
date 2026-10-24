@@ -7,13 +7,21 @@ use Atoria\Alfred\Agent\AgentState;
 use Atoria\Alfred\Agent\PromptBuilder;
 use Atoria\Alfred\Agent\Tools\ProposeEdit;
 use Atoria\Alfred\Alfred;
+use Atoria\Alfred\Context\CodeLocator;
 use Atoria\Alfred\Context\ElementDescriptor;
 use Atoria\Alfred\Context\PageContext;
+use Atoria\Alfred\Events\ChangeApplied;
+use Atoria\Alfred\Events\ChangeProposed;
+use Atoria\Alfred\Events\ChangeReverted;
 use Atoria\Alfred\Explanations\TooManyGenerations;
+use Atoria\Alfred\FollowUps\Known;
 use Atoria\Alfred\Llm\LlmException;
+use Atoria\Alfred\Preview\PreviewErrors;
 use Atoria\Alfred\Privacy\Redactor;
 use Atoria\Alfred\Security\PathGuard;
+use Atoria\Alfred\Usage\Usage;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -68,8 +76,8 @@ class ChangeManager
                 'selector' => $element->selector,
             ],
             'instruction' => $instruction,
-            'location' => app(\Atoria\Alfred\Context\CodeLocator::class)->locate($page, $element) + array_filter([
-                'explanation' => \Atoria\Alfred\FollowUps\Known::forTicket($known),
+            'location' => app(CodeLocator::class)->locate($page, $element) + array_filter([
+                'explanation' => Known::forTicket($known),
                 'refines' => $revision['id'] ?? null,
             ]),
         ];
@@ -116,7 +124,7 @@ class ChangeManager
             'input_tokens' => $result->inputTokens,
             'output_tokens' => $result->outputTokens,
         ]);
-        \Atoria\Alfred\Events\ChangeProposed::dispatch($change, $userLabel);
+        ChangeProposed::dispatch($change, $userLabel);
 
         return $change;
     }
@@ -130,7 +138,7 @@ class ChangeManager
     public function refine(Change $previous, PageContext $page, string $feedback, string $userKey, ?string $userLabel): Change
     {
         $element = ElementDescriptor::fromArray((array) $previous->element);
-        $original = trim(\Illuminate\Support\Str::before((string) $previous->instruction, "\n\nThen: "));
+        $original = trim(Str::before((string) $previous->instruction, "\n\nThen: "));
         $revision = [
             'id' => (int) $previous->id,
             'summary' => (string) $previous->summary,
@@ -138,7 +146,7 @@ class ChangeManager
             'notes' => $previous->notes,
             'applied' => $previous->status === Change::APPLIED,
             'feedback' => trim($feedback),
-            'preview_error' => \Atoria\Alfred\Preview\PreviewErrors::get((int) $previous->id),
+            'preview_error' => PreviewErrors::get((int) $previous->id),
         ];
 
         $change = $this->propose($page, $element, $original."\n\nThen: ".trim($feedback), $userKey, $userLabel, null, $revision);
@@ -188,7 +196,7 @@ class ChangeManager
             $abs = $editable->file($path);
             $current = (string) file_get_contents($abs);
             if (sha1($current) !== $hashes['before_sha1']) {
-                throw new ChangeConflict("{$path} has changed since this was proposed. Ask ".\Atoria\Alfred\Alfred::name().' again to get a fresh change.');
+                throw new ChangeConflict("{$path} has changed since this was proposed. Ask ".Alfred::name().' again to get a fresh change.');
             }
             $targets[$path] = ['abs' => $abs, 'before' => $current, 'after' => $current];
         }
@@ -219,7 +227,7 @@ class ChangeManager
             'applied_at' => now(),
             'error' => null,
         ])->save();
-        \Atoria\Alfred\Events\ChangeApplied::dispatch($change, $by);
+        ChangeApplied::dispatch($change, $by);
 
         return $change;
     }
@@ -255,7 +263,7 @@ class ChangeManager
             'reverted_by' => $by,
             'reverted_at' => now(),
         ])->save();
-        \Atoria\Alfred\Events\ChangeReverted::dispatch($change, $by);
+        ChangeReverted::dispatch($change, $by);
 
         return $change;
     }
@@ -320,13 +328,13 @@ class ChangeManager
     protected function assertWritable(): void
     {
         if ($this->alfred->editMode() !== 'write') {
-            throw new ChangeConflict(\Atoria\Alfred\Alfred::name().' is in "propose" mode here: download the patch and apply it in your repository.');
+            throw new ChangeConflict(Alfred::name().' is in "propose" mode here: download the patch and apply it in your repository.');
         }
     }
 
     protected function throttle(string $userKey): void
     {
-        \Atoria\Alfred\Usage\Usage::ensureBudget($userKey);
+        Usage::ensureBudget($userKey);
 
         $limit = (int) config('alfred.rate_limit', 6);
         if ($limit <= 0) {

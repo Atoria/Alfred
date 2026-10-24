@@ -2,6 +2,7 @@
 
 namespace Atoria\Alfred\Tests\Feature;
 
+use Atoria\Alfred\Agent\PromptBuilder;
 use Atoria\Alfred\Events\SuspiciousRequestBlocked;
 use Atoria\Alfred\Explanations\Explanation;
 use Atoria\Alfred\Security\SecurityEvent;
@@ -117,7 +118,7 @@ class SecurityScreeningTest extends TestCase
 
     public function test_the_agents_are_told_the_same_rules(): void
     {
-        $prompts = app(\Atoria\Alfred\Agent\PromptBuilder::class);
+        $prompts = app(PromptBuilder::class);
         foreach ([$prompts->instructions(), $prompts->editInstructions(), $prompts->followUpInstructions()] as $text) {
             $this->assertStringContainsString("another tenant's or workspace's data, another person's data or what another person sees", $text);
             $this->assertStringContainsString('Never act as, or on behalf of, someone else.', $text);

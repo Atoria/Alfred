@@ -5,7 +5,10 @@ namespace Atoria\Alfred\Explanations;
 use Atoria\Alfred\Agent\Agent;
 use Atoria\Alfred\Context\ElementDescriptor;
 use Atoria\Alfred\Context\PageContext;
+use Atoria\Alfred\Events\ExplanationGenerated;
 use Atoria\Alfred\Security\PathGuard;
+use Atoria\Alfred\Tenancy\Tenancy;
+use Atoria\Alfred\Usage\Usage;
 use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
@@ -127,7 +130,7 @@ class Explainer
         ]);
 
         ExplanationVersion::record($explanation, $existed ? 'regenerated' : 'generated', $by);
-        \Atoria\Alfred\Events\ExplanationGenerated::dispatch($explanation, $by);
+        ExplanationGenerated::dispatch($explanation, $by);
 
         return $explanation;
     }
@@ -135,7 +138,7 @@ class Explainer
     /** New AI work for this user (and, for guests, this IP) this minute. Shared by explanations and follow-ups. */
     public function throttle(string $userKey): void
     {
-        \Atoria\Alfred\Usage\Usage::ensureBudget($userKey);
+        Usage::ensureBudget($userKey);
 
         $limit = (int) config('alfred.rate_limit', 6);
         if ($limit <= 0) {
@@ -146,7 +149,7 @@ class Explainer
 
         // Guests can start a fresh session at will, so they are also limited per IP.
         if (! str_starts_with($userKey, 'u:') && app()->bound('request')) {
-            $keys['alfred:generate:guest-ip:'.sha1(app(\Atoria\Alfred\Tenancy\Tenancy::class)->current().'|'.(string) request()->ip())] = max(1, (int) config('alfred.guests.rate_limit', $limit));
+            $keys['alfred:generate:guest-ip:'.sha1(app(Tenancy::class)->current().'|'.(string) request()->ip())] = max(1, (int) config('alfred.guests.rate_limit', $limit));
         }
 
         foreach ($keys as $key => $max) {

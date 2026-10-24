@@ -2,6 +2,12 @@
 
 namespace Atoria\Alfred\Changes;
 
+use Atoria\Alfred\Context\FrontendSource;
+use Atoria\Alfred\Preview\Preview;
+use Atoria\Alfred\Preview\PreviewErrors;
+use Atoria\Alfred\PullRequests\PullRequestOpener;
+use Atoria\Alfred\Tickets\Trackers\TrackerManager;
+
 class ChangePresenter
 {
     /**
@@ -11,7 +17,7 @@ class ChangePresenter
     {
         $writable = $mode === 'write';
         $paths = $c->paths();
-        $frontend = array_values(array_filter($paths, fn ($p) => \Atoria\Alfred\Context\FrontendSource::frontendFile($p)));
+        $frontend = array_values(array_filter($paths, fn ($p) => FrontendSource::frontendFile($p)));
         // Preview swaps PHP classes and Blade views; front-end files need a build.
         $previewable = count($frontend) < count($paths);
 
@@ -32,7 +38,7 @@ class ChangePresenter
             'can_apply' => $writable && $c->hasEdits() && in_array($c->status, [Change::PROPOSED, Change::REVERTED], true),
             'can_revert' => $writable && $c->status === Change::APPLIED,
             'can_discard' => $c->status === Change::PROPOSED,
-            'can_preview' => $previewable && $c->hasEdits() && in_array($c->status, [Change::PROPOSED, Change::REVERTED], true) && app(\Atoria\Alfred\Preview\Preview::class)->enabled(),
+            'can_preview' => $previewable && $c->hasEdits() && in_array($c->status, [Change::PROPOSED, Change::REVERTED], true) && app(Preview::class)->enabled(),
             'requested_by' => $c->requested_by,
             'environment' => $c->environment,
             'route' => $c->route,
@@ -43,10 +49,10 @@ class ChangePresenter
             'reverted_at' => $c->reverted_at?->toIso8601String(),
             'model' => $c->model,
             'screenshots' => array_values(array_filter(['before', 'after'], fn ($k) => isset(((array) $c->screenshots)[$k]))),
-            'pull_request' => $c->pr_key ? app(\Atoria\Alfred\PullRequests\PullRequestOpener::class)->info($c) : null,
+            'pull_request' => $c->pr_key ? app(PullRequestOpener::class)->info($c) : null,
             'ticket' => $c->ticket_key ? ['provider' => $c->ticket_provider, 'label' => self::trackerLabel($c->ticket_provider), 'key' => $c->ticket_key, 'url' => $c->ticket_url] : null,
             'error' => $c->error,
-            'preview_error' => in_array($c->status, [Change::PROPOSED, Change::REVERTED], true) ? \Atoria\Alfred\Preview\PreviewErrors::get((int) $c->id) : null,
+            'preview_error' => in_array($c->status, [Change::PROPOSED, Change::REVERTED], true) ? PreviewErrors::get((int) $c->id) : null,
             'refines' => ((array) $c->location)['refines'] ?? null,
             'can_refine' => in_array($c->status, [Change::PROPOSED, Change::REVERTED, Change::APPLIED, Change::FAILED], true),
             'trace' => $canViewCode ? array_values((array) $c->trace) : [], // holds code the agent read
@@ -71,7 +77,7 @@ class ChangePresenter
             return null;
         }
         try {
-            return app(\Atoria\Alfred\Tickets\Trackers\TrackerManager::class)->get($provider)->label();
+            return app(TrackerManager::class)->get($provider)->label();
         } catch (\InvalidArgumentException) {
             return ucfirst($provider);
         }

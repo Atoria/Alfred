@@ -2,12 +2,14 @@
 
 namespace Atoria\Alfred\Agent;
 
+use Atoria\Alfred\Alfred;
 use Atoria\Alfred\Context\ComponentResolver;
 use Atoria\Alfred\Context\ElementDescriptor;
 use Atoria\Alfred\Context\FrontendSource;
 use Atoria\Alfred\Context\PageContext;
 use Atoria\Alfred\Privacy\Redactor;
 use Atoria\Alfred\Security\PathGuard;
+use Atoria\Alfred\Support\SafeUrl;
 
 class PromptBuilder
 {
@@ -19,7 +21,7 @@ class PromptBuilder
     {
         $audience = (string) config('alfred.agent.audience', 'a non-technical business user of this application');
         $locale = (string) config('alfred.agent.locale', 'en');
-        $name = \Atoria\Alfred\Alfred::name();
+        $name = Alfred::name();
 
         return <<<PROMPT
 You are {$name}, built into a Laravel web application. A user pointed at something on a page — a number, a chart, a table column, a badge — and asked "How is this calculated? Where does it come from?". Your job is to find out from the application's source code and explain it to {$audience}.
@@ -66,7 +68,7 @@ PROMPT;
     {
         $audience = (string) config('alfred.agent.audience', 'a non-technical business user of this application');
         $locale = (string) config('alfred.agent.locale', 'en');
-        $name = \Atoria\Alfred\Alfred::name();
+        $name = Alfred::name();
 
         return <<<PROMPT
 You are {$name}, built into a Laravel web application. Someone pointed at a value on a page, read your explanation of how it is calculated, and now has a follow-up question. Answer that question for {$audience}.
@@ -151,7 +153,7 @@ PROMPT;
 
     public function editInstructions(): string
     {
-        return str_replace('{$name}', \Atoria\Alfred\Alfred::name(), <<<'PROMPT'
+        return str_replace('{$name}', Alfred::name(), <<<'PROMPT'
 You are {$name}, built into a Laravel web application. A developer or designer pointed at an element on a page and asked for a change to how it looks or is laid out. Your job is to find the code that renders it and propose the smallest correct code change.
 
 How to work:
@@ -282,7 +284,7 @@ PROMPT);
         // carry reset tokens or text someone typed to steer an explanation others read.
         // Only without a route (no template) is the path itself the page's identity, and part of the cache key.
         if (! $page->routeUri) {
-            $lines[] = 'URL path: '.\Atoria\Alfred\Support\SafeUrl::path((string) (parse_url($page->url, PHP_URL_PATH) ?: '/'));
+            $lines[] = 'URL path: '.SafeUrl::path((string) (parse_url($page->url, PHP_URL_PATH) ?: '/'));
         }
         $lines[] = 'Route: '.($page->routeName ?: '(unnamed)').' — '.($page->routeUri ? '/'.ltrim($page->routeUri, '/') : '?');
         $lines[] = 'Action: '.($page->action ?: '?');

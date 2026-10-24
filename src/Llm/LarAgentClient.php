@@ -4,6 +4,12 @@ namespace Atoria\Alfred\Llm;
 
 use LarAgent\Core\Contracts\LlmDriver;
 use LarAgent\Core\DTO\DriverConfig;
+use LarAgent\Drivers\Anthropic\ClaudeDriver;
+use LarAgent\Drivers\Gemini\GeminiDriver;
+use LarAgent\Drivers\Groq\GroqDriver;
+use LarAgent\Drivers\OpenAi\BaseOpenAiDriver;
+use LarAgent\Drivers\OpenAi\OpenAiDriver;
+use LarAgent\Drivers\OpenAi\OpenAiResponsesDriver;
 use LarAgent\Message;
 use LarAgent\Messages\ToolCallMessage;
 use LarAgent\Messages\ToolResultMessage;
@@ -183,9 +189,9 @@ class LarAgentClient implements LlmClient
         }
 
         $driver = (string) ($provider['driver'] ?? '');
-        $openAi = in_array($driver, [\LarAgent\Drivers\OpenAi\OpenAiDriver::class, \LarAgent\Drivers\OpenAi\OpenAiResponsesDriver::class], true)
-            || is_subclass_of($driver, \LarAgent\Drivers\OpenAi\OpenAiDriver::class)
-            || is_subclass_of($driver, \LarAgent\Drivers\OpenAi\OpenAiResponsesDriver::class);
+        $openAi = in_array($driver, [OpenAiDriver::class, OpenAiResponsesDriver::class], true)
+            || is_subclass_of($driver, OpenAiDriver::class)
+            || is_subclass_of($driver, OpenAiResponsesDriver::class);
 
         return $openAi ? (config('alfred.openai.api_key') ?: null) : null;
     }
@@ -271,11 +277,11 @@ class LarAgentClient implements LlmClient
     protected function family(LlmDriver $driver): string
     {
         return match (true) {
-            $driver instanceof \LarAgent\Drivers\OpenAi\OpenAiResponsesDriver => 'responses',
-            $driver instanceof \LarAgent\Drivers\OpenAi\BaseOpenAiDriver => 'chat',
-            $driver instanceof \LarAgent\Drivers\Anthropic\ClaudeDriver => 'claude',
-            $driver instanceof \LarAgent\Drivers\Groq\GroqDriver => 'groq',
-            $driver instanceof \LarAgent\Drivers\Gemini\GeminiDriver => 'gemini',
+            $driver instanceof OpenAiResponsesDriver => 'responses',
+            $driver instanceof BaseOpenAiDriver => 'chat',
+            $driver instanceof ClaudeDriver => 'claude',
+            $driver instanceof GroqDriver => 'groq',
+            $driver instanceof GeminiDriver => 'gemini',
             default => 'other',
         };
     }

@@ -2,6 +2,8 @@
 
 namespace Atoria\Alfred\Explanations;
 
+use Atoria\Alfred\Alfred;
+use Atoria\Alfred\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -21,7 +23,7 @@ use Illuminate\Support\Carbon;
  */
 class ExplanationVersion extends Model
 {
-    use \Atoria\Alfred\Tenancy\BelongsToTenant;
+    use BelongsToTenant;
 
     public const UPDATED_AT = null;
 
@@ -39,7 +41,7 @@ class ExplanationVersion extends Model
 
     public function getConnectionName(): ?string
     {
-        return \Atoria\Alfred\Alfred::connection() ?? parent::getConnectionName();
+        return Alfred::connection() ?? parent::getConnectionName();
     }
 
     public static function record(Explanation $e, string $action, ?string $by): self

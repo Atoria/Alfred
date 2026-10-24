@@ -2,12 +2,15 @@
 
 namespace Atoria\Alfred\Tenancy;
 
+use Illuminate\Http\Request;
+use Stancl\Tenancy\Tenancy;
+
 /** stancl/tenancy v3+. */
 class StanclTenancy implements TenancyAdapter
 {
     public function available(): bool
     {
-        return function_exists('tenancy') && class_exists(\Stancl\Tenancy\Tenancy::class);
+        return function_exists('tenancy') && class_exists(Tenancy::class);
     }
 
     public function current(): ?string
@@ -35,7 +38,7 @@ class StanclTenancy implements TenancyAdapter
         }
     }
 
-    public function isTenantRequest(\Illuminate\Http\Request $request): ?bool
+    public function isTenantRequest(Request $request): ?bool
     {
         $central = array_map('strtolower', (array) config('tenancy.central_domains', []));
         if ($central === []) {

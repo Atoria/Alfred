@@ -2,6 +2,10 @@
 
 namespace Atoria\Alfred\Security;
 
+use Atoria\Alfred\Alfred;
+use Atoria\Alfred\Tenancy\BelongsToTenant;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -23,10 +27,10 @@ use Illuminate\Support\Carbon;
  */
 class SecurityEvent extends Model
 {
-    use \Atoria\Alfred\Tenancy\BelongsToTenant;
-    use \Illuminate\Database\Eloquent\MassPrunable;
+    use BelongsToTenant;
+    use MassPrunable;
 
-    public function prunable(): \Illuminate\Database\Eloquent\Builder
+    public function prunable(): Builder
     {
         $days = (int) config('alfred.retention.security_events_days', 180);
 
@@ -46,6 +50,6 @@ class SecurityEvent extends Model
 
     public function getConnectionName(): ?string
     {
-        return \Atoria\Alfred\Alfred::connection() ?? parent::getConnectionName();
+        return Alfred::connection() ?? parent::getConnectionName();
     }
 }

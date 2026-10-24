@@ -3,6 +3,7 @@
 namespace Atoria\Alfred\Console;
 
 use Atoria\Alfred\Explanations\Explanation;
+use Atoria\Alfred\Preview\Preview;
 use Atoria\Alfred\Security\PathGuard;
 use Illuminate\Console\Command;
 
@@ -18,7 +19,7 @@ class ClearCommand extends Command
     public function handle(PathGuard $guard): int
     {
         if ($this->option('previews')) {
-            $this->info('Removed '.\Atoria\Alfred\Preview\Preview::prune(0).' preview folder(s).');
+            $this->info('Removed '.Preview::prune(0).' preview folder(s).');
 
             return self::SUCCESS;
         }

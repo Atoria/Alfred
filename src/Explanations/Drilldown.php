@@ -2,7 +2,10 @@
 
 namespace Atoria\Alfred\Explanations;
 
+use Atoria\Alfred\Alfred;
 use Atoria\Alfred\Context\PageContext;
+use Atoria\Alfred\Preview\ClassName;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use Throwable;
@@ -26,7 +29,7 @@ class Drilldown
 
         $query = $page->findQuery($explanation->query_sql, $explanation->query_connection, $explanation->query_source);
         if (! $query) {
-            throw new InvalidArgumentException('This page did not run the query behind this value. Open '.\Atoria\Alfred\Alfred::name().' on the page where the value is shown.');
+            throw new InvalidArgumentException('This page did not run the query behind this value. Open '.Alfred::name().' on the page where the value is shown.');
         }
 
         $limit = max(1, (int) config('alfred.drilldown.max_rows', 100));
@@ -113,9 +116,9 @@ class Drilldown
                 if ($file->getExtension() !== 'php') {
                     continue;
                 }
-                $class = \Atoria\Alfred\Preview\ClassName::fromCode((string) file_get_contents($file->getPathname()));
+                $class = ClassName::fromCode((string) file_get_contents($file->getPathname()));
                 try {
-                    if ($class && class_exists($class) && is_subclass_of($class, \Illuminate\Database\Eloquent\Model::class) && ! (new \ReflectionClass($class))->isAbstract()) {
+                    if ($class && class_exists($class) && is_subclass_of($class, Model::class) && ! (new \ReflectionClass($class))->isAbstract()) {
                         foreach ((new $class)->getHidden() as $column) {
                             $hidden[] = strtolower((string) $column);
                         }

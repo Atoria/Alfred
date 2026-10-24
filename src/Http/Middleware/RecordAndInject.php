@@ -2,10 +2,12 @@
 
 namespace Atoria\Alfred\Http\Middleware;
 
+use Atoria\Alfred\Access\Guests;
 use Atoria\Alfred\Alfred;
 use Atoria\Alfred\Context\ContextStore;
 use Atoria\Alfred\Context\RequestRecorder;
 use Atoria\Alfred\Preview\Preview;
+use Atoria\Alfred\Preview\PreviewFailure;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -61,7 +63,7 @@ class RecordAndInject
         if ($this->preview->active() && $response->getStatusCode() >= 500 && ! $response->headers->has('X-Alfred-Preview-Failed')) {
             $this->recorder->stop();
 
-            return \Atoria\Alfred\Preview\PreviewFailure::response($request, $this->preview, null, $response->getStatusCode());
+            return PreviewFailure::response($request, $this->preview, null, $response->getStatusCode());
         }
 
         if (! $this->recorder->active()) {
@@ -105,7 +107,7 @@ class RecordAndInject
      */
     protected function mayBeSomeone(Request $request): bool
     {
-        if (app(\Atoria\Alfred\Access\Guests::class)->enabled()) {
+        if (app(Guests::class)->enabled()) {
             return true;
         }
         if ($request->cookies->has((string) config('session.cookie')) || $request->bearerToken() !== null) {

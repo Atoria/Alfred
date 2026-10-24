@@ -2,14 +2,16 @@
 
 namespace Atoria\Alfred\Tenancy;
 
+use Illuminate\Http\Request;
 use RuntimeException;
+use Spatie\Multitenancy\Models\Tenant;
 
 /** spatie/laravel-multitenancy v3+. */
 class SpatieTenancy implements TenancyAdapter
 {
     public function available(): bool
     {
-        return class_exists(\Spatie\Multitenancy\Models\Tenant::class);
+        return class_exists(Tenant::class);
     }
 
     public function current(): ?string
@@ -37,7 +39,7 @@ class SpatieTenancy implements TenancyAdapter
     }
 
     /** Spatie identifies the tenant itself, early in the request: Alfred then checks it matches the page's. */
-    public function isTenantRequest(\Illuminate\Http\Request $request): ?bool
+    public function isTenantRequest(Request $request): ?bool
     {
         return null;
     }
@@ -47,9 +49,9 @@ class SpatieTenancy implements TenancyAdapter
         return config('multitenancy.landlord_database_connection_name') ?: null;
     }
 
-    /** @return class-string<\Spatie\Multitenancy\Models\Tenant> */
+    /** @return class-string<Tenant> */
     protected function model(): string
     {
-        return config('multitenancy.tenant_model') ?: \Spatie\Multitenancy\Models\Tenant::class;
+        return config('multitenancy.tenant_model') ?: Tenant::class;
     }
 }
