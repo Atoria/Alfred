@@ -320,6 +320,20 @@ PHP);
         $this->assertFalse($hit, 'previewed code never ran for the other session');
     }
 
+    public function test_requests_without_a_session_do_not_end_the_preview(): void
+    {
+        // Like Livewire's script route: no "web" middleware, so no session and no user.
+        Route::get('/asset.js', fn () => response('console.log(1)', 200, ['Content-Type' => 'application/javascript']));
+        $manager = $this->user('verifier@example.com');
+        $change = $this->proposal($this->classPath, 'return $value;', "return 'CHANGED';");
+        $token = $this->previewToken($manager, $change);
+
+        $res = $this->withUnencryptedCookie(Preview::COOKIE, $token)->get('/asset.js')->assertOk();
+        $this->assertNull($res->getCookie(Preview::COOKIE, false), 'the preview cookie is kept');
+
+        $this->actingAs($manager)->withUnencryptedCookie(Preview::COOKIE, $token)->get('/board')->assertOk()->assertSee('CHANGED', false);
+    }
+
     public function test_a_preview_stops_when_its_owner_may_no_longer_edit(): void
     {
         $manager = $this->user('verifier@example.com');

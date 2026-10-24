@@ -84,7 +84,10 @@
     send: '<path d="M21 3 10 14"/><path d="M21 3l-7 18-4-7-7-4z"/>',
     arrow: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
     text: '<path d="M4 6h16M4 12h11M4 18h7"/>',
-    stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>'
+    stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
+    dock: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M14.5 4.5v15"/>',
+    swap: '<path d="M7 7h12"/><path d="m15 3 4 4-4 4"/><path d="M17 17H5"/><path d="m9 13-4 4 4 4"/>',
+    minimize: '<path d="M5 18h14"/>'
   };
 
   function icon(name, cls) {
@@ -398,15 +401,19 @@
     '@media (prefers-color-scheme:dark){:host{--bg:#1c1c20;--fg:#f2f2f5;--muted:#a1a1aa;--line:#33333a;--soft:#26262c;--accent:#7c93ff;--accent-fg:#0b0b10;--ok:#4ade80;--warn:#fbbf24;--warn-bg:#3a2c10;}}',
     '*{box-sizing:border-box;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-ligatures:none;}',
     '.fab{position:fixed;bottom:20px;width:44px;height:44px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-fg);font:600 20px/44px ui-sans-serif,system-ui;cursor:pointer;box-shadow:var(--shadow);}',
-    '.fab{transition:right .15s,left .15s}.fab.right.beside{right:calc(min(420px,100vw) + 16px)}.fab.left.beside{left:calc(min(420px,100vw) + 16px)}.hint.right.beside{right:calc(min(420px,100vw) + 16px)}.hint.left.beside{left:calc(min(420px,100vw) + 16px)}',
+    '.fab{transition:right .15s,left .15s}.fab.right{right:calc(var(--pr,0px) + 20px)}.fab.left{left:calc(var(--pl,0px) + 20px)}.hint.right{right:calc(var(--pr,0px) + 20px)}.hint.left{left:calc(var(--pl,0px) + 20px)}',
     '.fab.img{padding:0;overflow:hidden;background:var(--bg)}.fab img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}.fab.img.on{background:var(--bg)}',
-    '.fab.right{right:20px}.fab.left{left:20px}.fab.on{outline:3px solid var(--accent);outline-offset:3px;background:var(--fg);color:var(--bg)}',
+    '.fab.on{outline:3px solid var(--accent);outline-offset:3px;background:var(--fg);color:var(--bg)}',
     '.hint{position:fixed;bottom:74px;padding:8px 12px;border-radius:8px;background:var(--fg);color:var(--bg);font-size:13px;box-shadow:var(--shadow);}',
-    '.hint.right{right:20px}.hint.left{left:20px}',
     '.box{position:fixed;pointer-events:none;border:2px solid var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:4px;transition:all .06s ease-out;}',
     '.tag{position:fixed;pointer-events:none;max-width:320px;padding:3px 8px;border-radius:6px;background:var(--accent);color:var(--accent-fg);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     '.panel{position:fixed;top:0;right:0;width:min(420px,100vw);height:100vh;background:var(--bg);color:var(--fg);border-left:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;font-size:14px;line-height:1.5;}',
     '.panel.left{right:auto;left:0;border-left:0;border-right:1px solid var(--line)}',
+    '.panel.min{display:none}',
+    '.grip{position:absolute;top:0;bottom:0;left:-4px;width:8px;cursor:col-resize;z-index:3;touch-action:none}.panel.left .grip{left:auto;right:-4px}.grip::after{content:"";position:absolute;top:50%;left:3px;width:2px;height:36px;margin-top:-18px;border-radius:2px;background:var(--line);opacity:0;transition:opacity .15s}.grip:hover::after,.grip.on::after{opacity:1;background:var(--accent)}',
+    '.panel.resizing,.panel.resizing *{user-select:none}',
+    '.iconbtn.on{color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}',
+    '.pill{position:fixed;bottom:20px;display:flex;align-items:center;gap:8px;max-width:min(360px,70vw);height:44px;padding:0 16px;border:1px solid var(--line);border-radius:22px;background:var(--bg);color:var(--fg);font-size:13px;font-weight:600;box-shadow:var(--shadow);cursor:pointer}.pill span.t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pill.done{border-color:var(--accent)}.pill .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none}',
     '.body{padding:16px;overflow:auto;flex:1}',
     'h2{font-size:18px;margin:0 0 6px;line-height:1.3}',
     'h3{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:18px 0 6px}',
@@ -485,14 +492,14 @@
     '.shot .shot-foot{display:flex;align-items:center;justify-content:space-between;gap:4px}.shot label{display:flex;gap:6px;align-items:center;cursor:pointer}.shot label input{margin:0}',
     '.kbd{font-size:11.5px;color:var(--muted)}',
     '.pv{position:fixed;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:6px;align-items:center;padding:6px 6px 6px 14px;border-radius:14px;background:#111827;color:#f9fafb;font-size:13px;font-weight:500;box-shadow:0 10px 30px rgba(0,0,0,.28);max-width:calc(100vw - 24px);transition:left .15s,max-width .15s}',
-    '.pv.beside{left:calc((100vw - min(420px,100vw)) / 2);max-width:calc(100vw - min(420px,100vw) - 24px)}',
+    '.pv{left:calc(var(--pl,0px) + (100vw - var(--pl,0px) - var(--pr,0px)) / 2);max-width:calc(100vw - var(--pl,0px) - var(--pr,0px) - 24px)}',
     '.pv .dot{width:8px;height:8px;border-radius:50%;background:#f59e0b;box-shadow:0 0 0 4px rgba(245,158,11,.25);flex:none;animation:pulse 2s ease-in-out infinite}@keyframes pulse{50%{box-shadow:0 0 0 7px rgba(245,158,11,0)}}',
     '.pv .pv-tx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0 6px 0 4px;min-width:0}.pv .pv-tx b{font-weight:700;color:#fbbf24}',
     '.pv .btn.warn{background:#f59e0b;border-color:#f59e0b;color:#111827}.pv .btn.warn:hover{background:#fbbf24}',
     '.pv .btn{height:30px;border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:#f9fafb;box-shadow:none;font-size:12.5px;padding:0 10px;border-radius:9px}',
     '.pv .btn:hover{background:rgba(255,255,255,.16)}.pv .btn.primary{background:#f59e0b;border-color:transparent;color:#1a1200}.pv .btn.primary:hover{background:#fbbf24}',
     '.pv .btn.ghost{background:transparent;border-color:transparent;color:#d1d5db}.pv .btn.ghost:hover{background:rgba(255,255,255,.1);color:#fff}',
-    '.toast{position:fixed;bottom:76px;padding:8px 8px 8px 14px;border-radius:12px;background:#111827;color:#f9fafb;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.28);display:flex;gap:6px;align-items:center;max-width:min(440px,90vw)}.toast.right{right:20px}.toast.left{left:20px}.toast span.msg{margin-right:6px}',
+    '.toast{position:fixed;bottom:76px;padding:8px 8px 8px 14px;border-radius:12px;background:#111827;color:#f9fafb;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.28);display:flex;gap:6px;align-items:center;max-width:min(440px,90vw)}.toast.right{right:calc(var(--pr,0px) + 20px)}.toast.left{left:calc(var(--pl,0px) + 20px)}.toast span.msg{margin-right:6px}',
     '.toast .btn{height:28px;padding:0 10px;font-size:12px;border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:#fff;box-shadow:none}.toast .btn:hover{background:rgba(255,255,255,.16)}',
     '.section{margin-top:22px}',
     'details.fold{margin:6px 0 0;border:1px solid var(--line);border-radius:10px;padding:10px 12px}details.fold summary{font-weight:600;color:var(--fg)}details.fold[open] summary{margin-bottom:10px}',
@@ -600,7 +607,7 @@
 
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
-      if (inspecting) stopInspect(); else if (panel) closePanel();
+      if (inspecting) stopInspect(); else if (panel && !minimized) closePanel();
     }
     if (e.altKey && e.shiftKey && (e.key === 'A' || e.key === 'a' || e.code === 'KeyA')) {
       e.preventDefault();
@@ -609,29 +616,149 @@
   });
 
   // ------------------------------------------------------------------ panel
+  // Layout the person controls: drag the inner edge to resize (double-click:
+  // wide / normal), "side by side" shrinks the page so nothing is hidden,
+  // the panel can move to the other side or be minimized while work goes on.
+  // Remembered per browser (best effort: storage may be unavailable).
+  var PREFS_KEY = 'alfred.panel';
+  var DEFAULT_WIDTH = 420;
+  var prefs = (function () {
+    try { var p = JSON.parse(window.localStorage.getItem(PREFS_KEY) || '{}'); return p && typeof p === 'object' ? p : {}; } catch (e) { return {}; }
+  })();
+  function savePrefs() { try { window.localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch (e) { /* not available: fine */ } }
+  function panelSide() { return prefs.side === 'left' || prefs.side === 'right' ? prefs.side : side; }
+  function narrow() { return window.innerWidth < 640; }
+  function panelWidth() {
+    if (narrow()) return window.innerWidth;
+    var w = Number(prefs.width) || DEFAULT_WIDTH;
+    return Math.round(Math.max(320, Math.min(w, window.innerWidth - 160)));
+  }
+
+  var minimized = false;
+  var pill = null;
+  var pillTimer = null;
+  var docked = null; // { prop, value } the page's own margin, restored on undock
+
+  function undock() {
+    if (!docked) return;
+    var s = document.documentElement.style;
+    s.removeProperty('margin-left'); s.removeProperty('margin-right');
+    if (docked.value) s.setProperty(docked.prop, docked.value);
+    s.removeProperty('transition');
+    docked = null;
+  }
+
+  function dock(prop, width) {
+    var s = document.documentElement.style;
+    if (docked && docked.prop !== prop) undock();
+    if (!docked) docked = { prop: prop, value: s.getPropertyValue(prop) };
+    s.setProperty('transition', 'margin .15s');
+    s.setProperty(prop, width + 'px', 'important');
+  }
+
+  function layout() {
+    var ps = panelSide();
+    if (!panel) {
+      host.style.removeProperty('--pl'); host.style.removeProperty('--pr');
+      undock();
+      return;
+    }
+    var w = panelWidth();
+    panel.style.width = w + 'px';
+    panel.classList.toggle('left', ps === 'left');
+    panel.classList.toggle('min', minimized);
+    var shown = minimized ? 0 : w;
+    host.style.setProperty('--pr', (ps === 'right' ? shown : 0) + 'px');
+    host.style.setProperty('--pl', (ps === 'left' ? shown : 0) + 'px');
+    if (prefs.dock && !minimized && !narrow()) dock(ps === 'right' ? 'margin-right' : 'margin-left', w); else undock();
+    var dockBtn = panel.querySelector('[data-act=dock]');
+    if (dockBtn) { dockBtn.classList.toggle('on', !!prefs.dock); dockBtn.setAttribute('aria-pressed', prefs.dock ? 'true' : 'false'); }
+    renderPill();
+  }
+
+  function renderPill() {
+    if (!panel || !minimized) {
+      if (pill) { pill.remove(); pill = null; }
+      if (pillTimer) { clearInterval(pillTimer); pillTimer = null; }
+      return;
+    }
+    var working = !!panel.querySelector('.body .spin');
+    var title = (panel.querySelector('header b') || {}).textContent || NAME;
+    var ps = panelSide();
+    if (!pill) {
+      pill = h('button', { class: 'pill', type: 'button', onclick: restore });
+      root.appendChild(pill);
+    }
+    pill.className = 'pill ' + ps + (working ? '' : ' done');
+    // Next to the round button when it sits on the same side.
+    pill.style.left = pill.style.right = '';
+    pill.style[ps] = (ps === side ? 76 : 20) + 'px';
+    pill.title = working ? 'Still working: click to open' : 'Click to open';
+    pill.textContent = '';
+    pill.appendChild(working ? h('span', { class: 'spin' }) : h('span', { class: 'dot' }));
+    pill.appendChild(h('span', { class: 't', text: working ? NAME + ' is working… ' + title : title }));
+    if (!pillTimer) pillTimer = setInterval(renderPill, 700);
+  }
+
+  function minimize() { minimized = true; layout(); }
+  function restore() { minimized = false; layout(); }
+  function toggleDock() { prefs.dock = !prefs.dock; savePrefs(); layout(); }
+  function swapSide() { prefs.side = panelSide() === 'right' ? 'left' : 'right'; savePrefs(); layout(); }
+
+  function grip() {
+    var g = h('div', { class: 'grip', title: 'Drag to resize · double-click: wide / normal', role: 'separator', 'aria-orientation': 'vertical' });
+    g.addEventListener('pointerdown', function (e) {
+      if (narrow()) return;
+      e.preventDefault();
+      g.setPointerCapture(e.pointerId);
+      g.classList.add('on'); panel.classList.add('resizing');
+      function move(ev) {
+        prefs.width = panelSide() === 'right' ? window.innerWidth - ev.clientX : ev.clientX;
+        layout();
+      }
+      function up() {
+        g.classList.remove('on'); if (panel) panel.classList.remove('resizing');
+        g.removeEventListener('pointermove', move); g.removeEventListener('pointerup', up); g.removeEventListener('pointercancel', up);
+        prefs.width = panelWidth(); savePrefs();
+      }
+      g.addEventListener('pointermove', move); g.addEventListener('pointerup', up); g.addEventListener('pointercancel', up);
+    });
+    g.addEventListener('dblclick', function () {
+      prefs.width = panelWidth() > DEFAULT_WIDTH + 40 ? DEFAULT_WIDTH : Math.round(window.innerWidth * 0.6);
+      savePrefs(); layout();
+    });
+    return g;
+  }
+
+  window.addEventListener('resize', function () { if (panel) layout(); });
+
   function openPanel(title) {
     Array.prototype.forEach.call(root.querySelectorAll('.toast'), function (t) { t.remove(); });
-    fab.classList.add('beside'); hint.classList.add('beside');
-    var pvBar = root.querySelector('.pv'); if (pvBar) pvBar.classList.add('beside');
     if (!panel) {
-      panel = h('aside', { class: 'panel' + (side === 'left' ? ' left' : ''), role: 'dialog', 'aria-label': NAME });
+      panel = h('aside', { class: 'panel', role: 'dialog', 'aria-label': NAME });
       root.appendChild(panel);
     }
+    minimized = false;
     panel.textContent = '';
     var body = h('div', { class: 'body' });
+    panel.appendChild(grip());
     panel.appendChild(h('header', {}, [
       h('b', { text: title || 'How is this calculated?' }),
       config.canEdit ? btn('Changes', { kind: 'ghost', size: 'sm', icon: 'history', title: 'Recent changes', onclick: history }) : null,
+      h('button', { class: 'iconbtn', type: 'button', 'data-act': 'dock', title: 'Side by side: make room for the panel so it covers nothing', 'aria-label': 'Side by side', onclick: toggleDock }, [icon('dock')]),
+      h('button', { class: 'iconbtn', type: 'button', title: 'Move to the other side', 'aria-label': 'Move to the other side', onclick: swapSide }, [icon('swap')]),
+      h('button', { class: 'iconbtn', type: 'button', title: 'Minimize: keeps working in the background', 'aria-label': 'Minimize', onclick: minimize }, [icon('minimize')]),
       h('button', { class: 'iconbtn', type: 'button', title: 'Close (Esc)', 'aria-label': 'Close', onclick: closePanel }, [icon('x')])
     ]));
     panel.appendChild(body);
+    layout();
     return body;
   }
 
   function closePanel() {
-    fab.classList.remove('beside'); hint.classList.remove('beside');
-    var pvBar = root.querySelector('.pv'); if (pvBar) pvBar.classList.remove('beside');
     if (panel) { panel.remove(); panel = null; }
+    minimized = false;
+    layout();
   }
 
   function loading(body, text) {

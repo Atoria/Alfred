@@ -353,6 +353,15 @@ Stat::make('Conversion rate', $rate.'%')
 
 Only what identifies the element (its key or labels, column, kind and components) goes into the AI request, and all of it is part of the cache key. So nobody can slip instructions into a shared explanation through the page: the same element always gets the same explanation. Who may create the explanations everyone else sees is a gate of its own, `contributeAlfredExplanations` (by default: every signed-in user who may use Alfred). Others still get an answer, but it's private to them ("Only you see this").
 
+### The panel
+
+The panel opens on the side of the page. Drag its inner edge to make it wider (double-click: wide / normal). The header buttons let you:
+- choose **Side by side**, so the page makes room instead of being covered;
+- move the panel to the other side;
+- **Minimize** it while it keeps working. A small button shows when the work is done.
+
+Your choices are remembered in your browser.
+
 ### Follow-up questions
 
 Under every explanation there's an **Ask a follow-up** box: *"Does this include cancelled shifts?"*, *"Which dates count as this week?"*. Alfred starts from what the explanation already found, so most answers take seconds. It reads more code only when it needs to.

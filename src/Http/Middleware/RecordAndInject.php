@@ -50,13 +50,22 @@ class RecordAndInject
 
         $response = $next($request);
 
-        // A preview only for the person it was issued to, while they may still edit:
-        // anyone else carrying the cookie is sent back to the normal page, cookie removed.
-        if ($this->preview->active() && ! $this->previewAllowed($request)) {
+        // A preview only for the person it was issued to, while they may still edit.
+        // Requests without a session (asset routes such as Livewire's script)
+        // can't tell who is asking; the preview token is already bound to this
+        // browser's session, so those are left alone. Anyone else carrying the
+        // cookie gets the normal page (pages) or just loses the cookie (other requests).
+        if ($this->preview->active() && $request->hasSession() && ! $this->previewAllowed($request)) {
             report(new \RuntimeException('Alfred preview cookie used by someone it was not issued to; preview stopped.'));
             $this->recorder->stop();
+            $forget = $this->preview->forgetCookie($request);
 
-            return redirect()->to('/'.ltrim($request->path(), '/'))->withCookie($this->preview->forgetCookie($request));
+            if ($request->isMethod('GET') && ! $request->expectsJson()) {
+                return redirect()->to('/'.ltrim($request->path(), '/'))->withCookie($forget);
+            }
+            $response->headers->setCookie($forget);
+
+            return $response;
         }
 
         // A previewed change that made the page fail without an exception (e.g. a 500 response).

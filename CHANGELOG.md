@@ -6,6 +6,23 @@ All notable changes to Alfred are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-24
+
+### Added
+- **Panel layout controls:**
+  - drag the panel's inner edge to resize it (double-click switches between
+    wide and normal);
+  - **Side by side** makes the page narrower so the panel covers nothing;
+  - move the panel to the other side;
+  - **Minimize** it to a small button that shows when work in progress is
+    done.
+  These choices are remembered in the browser.
+
+### Fixed
+- Previews stopped as soon as the page loaded a script or asset served
+  without a session (such as Livewire's own script). The preview was
+  mistaken for one used by somebody else, and its cookie was removed.
+
 ## [1.1.0] - 2026-10-24
 
 ### Added
@@ -126,7 +143,8 @@ First public release.
   `ChangeProposed`, `ChangeApplied`, `ChangeReverted`, `TicketCreated`,
   `PullRequestOpened`, `SuspiciousRequestBlocked`.
 
-[Unreleased]: https://github.com/Atoria/Alfred/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/Atoria/Alfred/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/Atoria/Alfred/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Atoria/Alfred/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/Atoria/Alfred/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/Atoria/Alfred/compare/v1.0.0...v1.0.2
