@@ -47,11 +47,12 @@ Finer control (who sees code, records, who creates the shared explanations…) i
 | `ALFRED_OPENAI_MODEL` | `gpt-5-mini` | Model for explanations, follow-ups and changes. |
 | `ALFRED_OPENAI_REASONING_EFFORT` | `low` | How hard the model thinks for explanations (`low`/`medium`/`high`). Empty for non-reasoning models. |
 | `ALFRED_OPENAI_TIMEOUT` | `120` | Seconds to wait for one AI call. |
-| `ALFRED_LARAGENT_PROVIDER` | `default` | Which provider from `config/laragent.php` (`openai_responses`, `claude`, `gemini`, `ollama`…). |
-| `ALFRED_LARAGENT_MODEL` | provider's model | Model name for that provider. |
+| `ALFRED_LARAGENT_PROVIDER` | LarAgent's `default_providers`, else `default` | Which provider from `config/laragent.php` (`openai_responses`, `claude`, `gemini`, `ollama`…). Several, comma-separated: the rest are fallbacks. |
+| `ALFRED_LARAGENT_MODEL` | provider's model | Model for the first provider. |
 | `ALFRED_LARAGENT_REASONING` | `auto` | Send reasoning effort: `auto` (where it works in a tool loop), `on`, `off`. |
 | `ALFRED_LARAGENT_REASONING_EFFORT` | `ALFRED_OPENAI_REASONING_EFFORT` | Reasoning effort through LarAgent. |
-| `ALFRED_LARAGENT_MAX_TOKENS` | `16000` | Longest answer per step. Raise if you see "the answer was cut off". |
+| `ALFRED_LARAGENT_MAX_TOKENS` | the provider's `default_max_completion_tokens` or `16000`, whichever is larger | Longest reply per step. Raise it if replies get cut off. |
+| `ALFRED_LARAGENT_TEMPERATURE` | – (the model's default) | Sampling temperature for Alfred. Not taken from `config/laragent.php`, which is tuned for your app's own agents. |
 
 ## Explanations
 

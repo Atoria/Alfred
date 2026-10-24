@@ -228,12 +228,18 @@ return [
     | reasoning), "openrouter", "ollama".
     */
     'laragent' => [
-        'provider' => env('ALFRED_LARAGENT_PROVIDER', 'default'),
+        // A provider from config/laragent.php ("providers"), or several in order:
+        // the first is used, the others are fallbacks when it fails.
+        // Empty = LarAgent's own default_providers, else "default".
+        'provider' => env('ALFRED_LARAGENT_PROVIDER'),
         'model' => env('ALFRED_LARAGENT_MODEL'), // null = the provider's model in config/laragent.php
         // auto: where the API supports it in a tool loop (see README) | on | off
         'reasoning' => env('ALFRED_LARAGENT_REASONING', 'auto'),
         'reasoning_effort' => env('ALFRED_LARAGENT_REASONING_EFFORT', env('ALFRED_OPENAI_REASONING_EFFORT', 'low')),
-        'max_tokens' => (int) env('ALFRED_LARAGENT_MAX_TOKENS', 16000),
+        // Longest reply per step. Empty = the provider's default_max_completion_tokens or 16000, whichever is larger.
+        'max_tokens' => env('ALFRED_LARAGENT_MAX_TOKENS'),
+        // Empty = none sent (the model's default). Not taken from config/laragent.php: that is tuned for your app's own agents.
+        'temperature' => env('ALFRED_LARAGENT_TEMPERATURE'),
     ],
 
     /*

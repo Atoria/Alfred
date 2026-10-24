@@ -6,10 +6,12 @@ use Atoria\Alfred\AlfredServiceProvider;
 use Atoria\Alfred\Explanations\Explanation;
 use Atoria\Alfred\Llm\LarAgentClient;
 use Atoria\Alfred\Llm\LlmClient;
+use Atoria\Alfred\Llm\LlmCutOff;
 use Atoria\Alfred\Llm\LlmException;
 use Atoria\Alfred\Tests\Fixtures\LarAgent\RecordingChatDriver;
 use Atoria\Alfred\Tests\Fixtures\LarAgent\RecordingClaudeDriver;
 use Atoria\Alfred\Tests\Fixtures\LarAgent\RecordingResponsesDriver;
+use Atoria\Alfred\Tests\Fixtures\LarAgent\ScriptedResponsesDriver;
 use Atoria\Alfred\Tests\TestCase;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Testing\TestResponse;
@@ -222,14 +224,16 @@ class LarAgentTest extends TestCase
         $this->useDriver($driver);
         $verifier = $this->user('verifier@example.com');
         $this->actingAs($verifier)->postJson('/_alfred/explain', ['token' => $this->loadDashboard($verifier), 'element' => $this->element(['labels' => ['Other']])])
-            ->assertStatus(502)->assertJsonPath('message', fn ($m) => str_contains($m, 'cut off at the token limit (ALFRED_LARAGENT_MAX_TOKENS=16000)'));
+            ->assertStatus(502)->assertJsonPath('message', fn ($m) => str_contains($m, 'cut off at the token limit (16000 tokens). Raise ALFRED_LARAGENT_MAX_TOKENS'));
     }
 
     public function test_provider_errors_are_explained(): void
     {
-        $driver = (new RecordingResponsesDriver(['model' => 'gpt-5-mini']))->recording([new \Exception('Unexpected finish reason: length')]);
+        // Chat-style drivers report a cut-off as "finish reason: length": retried once, then explained.
+        $driver = (new RecordingResponsesDriver(['model' => 'gpt-5-mini']))->recording([new \Exception('Unexpected finish reason: length'), new \Exception('Unexpected finish reason: length')]);
         $this->useDriver($driver);
         $this->explain()->assertStatus(502);
+        $this->assertCount(2, $driver->payloads);
 
         $client = new LarAgentClient(['provider' => 'nope']);
         try {
@@ -242,8 +246,18 @@ class LarAgentTest extends TestCase
         $client = new LarAgentClient(['provider' => 'test', 'driver' => $driver->recording([new \Exception('Unexpected finish reason: length')])]);
         try {
             $client->respond('x', [], []);
+            $this->fail('expected an exception');
+        } catch (LlmCutOff $e) {
+            $this->assertStringContainsString('ALFRED_LARAGENT_MAX_TOKENS', $e->getMessage());
+        }
+
+        // Ordinary errors are not mistaken for cut-offs.
+        $client = new LarAgentClient(['provider' => 'test', 'driver' => $driver->recording([new \Exception('Incorrect API key provided')])]);
+        try {
+            $client->respond('x', [], []);
+            $this->fail('expected an exception');
         } catch (LlmException $e) {
-            $this->assertStringContainsString('raise ALFRED_LARAGENT_MAX_TOKENS', $e->getMessage());
+            $this->assertNotInstanceOf(LlmCutOff::class, $e);
         }
     }
 
@@ -297,6 +311,107 @@ class LarAgentTest extends TestCase
         $this->assertSame('sk-alfred', $key('openai_responses'), 'OPENAI_API_KEY not set: use ALFRED_OPENAI_API_KEY');
         $this->assertSame('sk-own', $key('own'), "the provider's own key wins");
         $this->assertNull($key('openrouter'), 'never sent to a non-OpenAI service');
+    }
+
+    protected function scripted(array $config, array $alfred = []): void
+    {
+        ScriptedResponsesDriver::$scripts = [];
+        ScriptedResponsesDriver::$payloads = [];
+        config(['laragent.providers' => $config, 'laragent.default_providers' => null, 'laragent.fallback_provider' => null]);
+        config(['alfred.provider' => 'laragent']);
+        $this->app->bind(LlmClient::class, fn () => new LarAgentClient($alfred + ['reasoning' => 'auto', 'reasoning_effort' => 'low']));
+    }
+
+    public function test_the_connection_comes_from_laragent_and_the_task_settings_from_alfred(): void
+    {
+        $this->scripted([
+            'mine' => ['driver' => ScriptedResponsesDriver::class, 'api_key' => 'k', 'model' => 'gpt-4.1-mini',
+                'default_max_completion_tokens' => 30000, 'default_temperature' => 1.3, 'default_top_p' => 0.5, 'parallel_tool_calls' => false],
+        ], ['provider' => 'mine']);
+        ScriptedResponsesDriver::$scripts['gpt-4.1-mini'] = [$this->submit()];
+
+        $this->explain()->assertOk();
+        $payload = ScriptedResponsesDriver::$payloads['gpt-4.1-mini'][0];
+        $this->assertSame('gpt-4.1-mini', $payload['model'], "the provider's model");
+        $this->assertSame(30000, $payload['max_output_tokens'], 'a provider limit above 16000 is kept');
+        $this->assertFalse($payload['parallel_tool_calls'], 'what the provider supports');
+        $this->assertArrayNotHasKey('temperature', $payload, "the app's agents' sampling is not Alfred's");
+        $this->assertArrayNotHasKey('top_p', $payload);
+    }
+
+    public function test_a_low_provider_limit_never_cuts_alfred_short_but_alfreds_own_settings_win(): void
+    {
+        $stock = ['driver' => ScriptedResponsesDriver::class, 'api_key' => 'k', 'model' => 'gpt-5-mini', 'default_max_completion_tokens' => 10000, 'default_temperature' => 1];
+        $this->scripted(['openai_responses' => $stock]);
+
+        $this->assertSame(16000, (new LarAgentClient(['provider' => 'openai_responses']))->maxTokens(), "LarAgent's stock 10000 is too short for Alfred");
+        $this->assertSame(40000, (new LarAgentClient(['provider' => 'openai_responses', 'max_tokens' => '40000']))->maxTokens(), 'ALFRED_LARAGENT_MAX_TOKENS wins');
+        $this->assertSame(8000, (new LarAgentClient(['provider' => 'openai_responses', 'max_tokens' => '8000']))->maxTokens(), 'even when lower: it is explicit');
+        $this->assertSame(16000, (new LarAgentClient(['provider' => 'nothing-set']))->maxTokens());
+
+        $this->scripted(['openai_responses' => $stock], ['provider' => 'openai_responses', 'temperature' => '0.2']);
+        ScriptedResponsesDriver::$scripts['gpt-5-mini'] = [$this->submit()];
+        $this->explain()->assertOk();
+        $this->assertSame(0.2, ScriptedResponsesDriver::$payloads['gpt-5-mini'][0]['temperature'], 'ALFRED_LARAGENT_TEMPERATURE is sent when set');
+    }
+
+    public function test_a_failing_provider_falls_back_to_the_next(): void
+    {
+        $this->scripted([
+            'primary' => ['driver' => ScriptedResponsesDriver::class, 'api_key' => 'k', 'model' => 'model-a'],
+            'backup' => ['driver' => ScriptedResponsesDriver::class, 'api_key' => 'k', 'model' => 'model-b'],
+        ], ['provider' => 'primary,backup']);
+        ScriptedResponsesDriver::$scripts['model-a'] = [new \Exception('503 Service Unavailable')];
+        ScriptedResponsesDriver::$scripts['model-b'] = [$this->submit()];
+        Exceptions::fake();
+
+        $this->explain()->assertOk()->assertJson(['title' => 'Fill rate']);
+        $this->assertSame('model-b', Explanation::query()->first()->model);
+        Exceptions::assertReported(fn (LlmException $e) => str_contains($e->getMessage(), 'provider [primary] failed, trying [backup]'));
+    }
+
+    public function test_laragents_default_providers_and_overrides_are_followed(): void
+    {
+        $this->scripted([
+            'default' => ['driver' => ScriptedResponsesDriver::class, 'api_key' => 'k', 'model' => 'model-a'],
+            'gemini' => ['driver' => ScriptedResponsesDriver::class, 'api_key' => 'k', 'model' => 'model-b'],
+        ]);
+        config(['laragent.default_providers' => ['default', 'gemini' => ['model' => 'model-c']]]);
+
+        $client = new LarAgentClient([]);
+        $this->assertSame(['default', 'gemini'], array_column($client->providers(), 'name'));
+        $this->assertSame('model-c', $client->providers()[1]['config']['model']);
+
+        config(['laragent.default_providers' => null, 'laragent.fallback_provider' => 'gemini']);
+        $this->assertSame(['default', 'gemini'], array_column((new LarAgentClient([]))->providers(), 'name'), "LarAgent's older fallback_provider");
+    }
+
+    public function test_a_cut_off_reply_does_not_switch_provider(): void
+    {
+        $this->scripted([
+            'primary' => ['driver' => ScriptedResponsesDriver::class, 'api_key' => 'k', 'model' => 'model-a'],
+            'backup' => ['driver' => ScriptedResponsesDriver::class, 'api_key' => 'k', 'model' => 'model-b'],
+        ], ['provider' => 'primary,backup']);
+        ScriptedResponsesDriver::$scripts['model-a'] = [new \Exception('Unexpected finish reason: length'), $this->submit()];
+
+        $this->explain()->assertOk();
+        $this->assertArrayNotHasKey('model-b', ScriptedResponsesDriver::$payloads);
+    }
+
+    public function test_doctor_checks_every_provider_without_printing_keys(): void
+    {
+        $this->scripted([
+            'primary' => ['driver' => ScriptedResponsesDriver::class, 'api_key' => 'secret-key-123', 'model' => 'model-a', 'default_max_completion_tokens' => 20000],
+            'broken' => ['driver' => ScriptedResponsesDriver::class, 'api_key' => null, 'model' => 'model-b'],
+        ]);
+        config(['alfred.laragent' => ['provider' => 'primary,broken,missing'], 'alfred.openai.api_key' => null]);
+
+        $this->artisan('alfred:doctor')
+            ->expectsOutputToContain('LarAgent [primary] model model-a, key set (14 characters), up to 20000 tokens per reply')
+            ->expectsOutputToContain('LarAgent [broken] has no API key')
+            ->expectsOutputToContain('LarAgent [missing] not in config/laragent.php')
+            ->doesntExpectOutputToContain('secret-key-123')
+            ->assertFailed();
     }
 
     public function test_reasoning_model_detection(): void

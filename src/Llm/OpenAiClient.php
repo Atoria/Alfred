@@ -76,6 +76,23 @@ class OpenAiClient implements LlmClient
         }
 
         $items = (array) $response->json('output', []);
+
+        // Cut off before the reply finished (the model's own output limit):
+        // let the agent ask again, shorter.
+        if ($response->json('status') === 'incomplete') {
+            $reason = (string) $response->json('incomplete_details.reason', '');
+            if ($reason === 'content_filter') {
+                throw new LlmException('OpenAI stopped the reply (content filter).');
+            }
+            $complete = array_filter($items, fn ($i) => ($i['type'] ?? null) === 'function_call' && is_array(json_decode((string) ($i['arguments'] ?? ''), true)));
+            if ($complete === []) {
+                throw new LlmCutOff(
+                    'The AI\'s reply was cut off before it finished ('.($reason ?: 'incomplete').'). Try again, or use a model with a larger output limit.',
+                    (int) $response->json('usage.input_tokens', 0),
+                    (int) $response->json('usage.output_tokens', 0),
+                );
+            }
+        }
         $calls = [];
         $text = null;
 

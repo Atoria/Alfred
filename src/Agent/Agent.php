@@ -151,6 +151,15 @@ class Agent
             }
 
             foreach ($response->calls as $call) {
+                // Arguments that aren't valid JSON (usually a reply cut off mid-call):
+                // don't run the tool with half its input, tell the model instead.
+                if (self::malformed($call)) {
+                    $output = "Your call to {$call['name']} was cut off or its arguments were not valid JSON, so it was not run. Call it again with shorter arguments.";
+                    $state->record($steps, $call['name'], mb_substr((string) $call['raw'], 0, 200), $output);
+                    $input[] = $this->llm->toolResult($call['id'], $output);
+
+                    continue;
+                }
                 $output = $this->invoke($byName, $call['name'], $call['arguments'], $state);
                 $state->record($steps, $call['name'], (string) json_encode($call['arguments'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), $output);
                 $input[] = $this->llm->toolResult($call['id'], $output);
@@ -165,6 +174,17 @@ class Agent
             $outputTokens,
             $steps,
         );
+    }
+
+    /** @param  array<string, mixed>  $call */
+    protected static function malformed(array $call): bool
+    {
+        $raw = $call['raw'] ?? null;
+        if (! is_string($raw) || trim($raw) === '') {
+            return false; // clients that don't pass the raw text, or a call without arguments
+        }
+
+        return ! is_array(json_decode($raw, true));
     }
 
     protected static function usageKind(string $terminal): string

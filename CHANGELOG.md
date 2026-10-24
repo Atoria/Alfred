@@ -6,6 +6,43 @@ All notable changes to Alfred are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-24
+
+### Added
+- **LarAgent fallback providers:** `ALFRED_LARAGENT_PROVIDER=openai_responses,claude`,
+  or LarAgent's own `default_providers` / `fallback_provider`. A provider
+  that fails (outage, rate limit, bad key) hands over to the next one, and
+  the switch is logged.
+- `ALFRED_LARAGENT_TEMPERATURE`.
+- `alfred:doctor` checks each LarAgent provider Alfred will use: model,
+  whether a key is set (never the key), and the token limit.
+
+### Changed
+- How Alfred uses `config/laragent.php`: the connection comes from LarAgent,
+  the task settings from Alfred.
+  - **From LarAgent:** driver (or `default_driver`), key, URL, model,
+    `parallel_tool_calls`, and fallbacks with their per-provider overrides.
+    No need to repeat any of it in Alfred's variables.
+  - **Token limit:** the provider's `default_max_completion_tokens` or 16000,
+    whichever is larger. LarAgent's stock 10000 no longer cuts Alfred's
+    explanations short. `ALFRED_LARAGENT_MAX_TOKENS` sets an exact value.
+  - **Temperature and other sampling settings** are not inherited from your
+    app's agents. Alfred sends none unless `ALFRED_LARAGENT_TEMPERATURE` is
+    set.
+- `ALFRED_LARAGENT_PROVIDER` empty now means LarAgent's `default_providers`
+  (else `default`), as in LarAgent.
+
+### Fixed
+- Recovering from cut-off replies now works with every provider, not only
+  LarAgent's OpenAI Responses driver:
+  - Alfred's own OpenAI client recognises an incomplete reply and asks again.
+  - LarAgent's chat drivers report a cut-off as "finish reason: length"; that
+    is now recognised too.
+  - A tool call whose arguments aren't valid JSON is no longer run with
+    missing input. The model is told, and calls it again.
+- Custom `LlmClient` implementations can throw `LlmCutOff` to get the same
+  recovery (see docs/ai-providers.md).
+
 ## [1.0.3] - 2026-10-24
 
 ### Fixed
@@ -89,7 +126,8 @@ First public release.
   `ChangeProposed`, `ChangeApplied`, `ChangeReverted`, `TicketCreated`,
   `PullRequestOpened`, `SuspiciousRequestBlocked`.
 
-[Unreleased]: https://github.com/Atoria/Alfred/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/Atoria/Alfred/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/Atoria/Alfred/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/Atoria/Alfred/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/Atoria/Alfred/compare/v1.0.0...v1.0.2
 [1.0.0]: https://github.com/Atoria/Alfred/releases/tag/v1.0.0

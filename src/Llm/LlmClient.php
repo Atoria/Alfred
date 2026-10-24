@@ -11,6 +11,11 @@ interface LlmClient
      * @param  array<int, array<string, mixed>>  $input  conversation items so far (provider format)
      * @param  array<int, array<string, mixed>>  $tools  function tool definitions (name, description, parameters)
      * @param  string|null  $forceTool  if set, the model must call this tool
+     *
+     * Throw LlmCutOff when the reply was cut off before it finished (output
+     * token limit): the agent asks once more for a shorter reply. Include each
+     * call's raw argument text as 'raw' so malformed calls are caught too.
+     * Any other LlmException ends the run with its message.
      */
     public function respond(string $instructions, array $input, array $tools, ?string $forceTool = null): LlmResponse;
 

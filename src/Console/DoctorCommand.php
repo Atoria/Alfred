@@ -3,6 +3,7 @@
 namespace Atoria\Alfred\Console;
 
 use Atoria\Alfred\Alfred;
+use Atoria\Alfred\Llm\LarAgentClient;
 use Atoria\Alfred\PullRequests\Providers\GitProviderManager;
 use Atoria\Alfred\Tenancy\Tenancy;
 use Atoria\Alfred\Tickets\Trackers\TrackerManager;
@@ -36,7 +37,14 @@ class DoctorCommand extends Command
         $provider = (string) config('alfred.provider', 'openai');
         if ($provider === 'laragent') {
             $installed = class_exists(Agent::class);
-            $this->check('AI provider', $installed, $installed ? 'LarAgent ('.config('alfred.laragent.provider').')' : 'LarAgent selected but not installed — composer require maestroerror/laragent');
+            if (! $installed) {
+                $this->check('AI provider', false, 'LarAgent selected but not installed — composer require maestroerror/laragent');
+            } else {
+                foreach ((new LarAgentClient((array) config('alfred.laragent', [])))->describe() as $i => $p) {
+                    $this->check($i === 0 ? 'AI provider' : 'Fallback '.$i, $p['problem'] === null, "LarAgent [{$p['name']}] "
+                        .($p['problem'] ?? 'model '.$p['model'].', '.($p['key_length'] ? "key set ({$p['key_length']} characters)" : 'no key needed').", up to {$p['max_tokens']} tokens per reply"));
+                }
+            }
         } else {
             $key = (string) config('alfred.openai.api_key');
             $this->check('AI provider', $key !== '', $key !== '' ? 'OpenAI, key set ('.strlen($key).' characters), model '.config('alfred.openai.model') : 'OpenAI key missing — set ALFRED_OPENAI_API_KEY (or OPENAI_API_KEY)');

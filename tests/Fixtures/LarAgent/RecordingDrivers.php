@@ -66,3 +66,37 @@ class RecordingClaudeDriver extends ClaudeDriver
         return null;
     }
 }
+
+/**
+ * Built by Alfred from config/laragent.php like a real provider (so the
+ * provider's settings reach it); replies are scripted per model name.
+ */
+class ScriptedResponsesDriver extends OpenAiResponsesDriver
+{
+    /** @var array<string, array<int, mixed>> */
+    public static array $scripts = [];
+
+    /** @var array<string, array<int, array<string, mixed>>> */
+    public static array $payloads = [];
+
+    public function __construct(DriverConfig|array $settings = [])
+    {
+        try {
+            parent::__construct($settings);
+        } catch (\Error) {
+            // the OpenAI SDK client isn't needed (and may not be installed): replies are scripted
+        }
+    }
+
+    public function sendMessage(array $messages, DriverConfig|array $overrideSettings = []): AssistantMessage
+    {
+        $model = (string) $this->getDriverConfig()->model;
+        static::$payloads[$model][] = $this->preparePayload($messages, $overrideSettings);
+        $next = array_shift(static::$scripts[$model]);
+        if ($next instanceof \Throwable) {
+            throw $next;
+        }
+
+        return $next ?? throw new \RuntimeException("No scripted reply for {$model}");
+    }
+}

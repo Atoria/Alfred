@@ -70,8 +70,34 @@ Reasoning settings:
 ```dotenv
 ALFRED_LARAGENT_REASONING=auto            # auto (as in the table) | on (always send it) | off
 ALFRED_LARAGENT_REASONING_EFFORT=low      # explanations; changes use ALFRED_EDIT_REASONING_EFFORT (medium)
-ALFRED_LARAGENT_MAX_TOKENS=16000          # per answer; raise it if you see "the answer was cut off"
 ```
+
+### Your config/laragent.php is respected
+
+**Already using LarAgent? Don't repeat its settings for Alfred.** The rule: **how to reach a model comes from LarAgent; how Alfred does its job is Alfred's.** `config/laragent.php` stays the one place for providers, keys, URLs, models and fallbacks: with `ALFRED_PROVIDER=laragent` alone, Alfred uses the same provider(s) as your app's agents. What suits Alfred's task (long, precise answers about code) is not taken from your agents' tuning: the temperature and the like are left to the model unless you set `ALFRED_LARAGENT_TEMPERATURE`, and the token limit never goes below what Alfred needs. Add an `ALFRED_LARAGENT_*` variable only where Alfred should differ; none of them has to be set.
+
+| In `config/laragent.php` (per provider) | Used by Alfred | Override with |
+|---|---|---|
+| `driver` (or `default_driver`) | yes | – |
+| `api_key` | yes (OpenAI providers without one fall back to `ALFRED_OPENAI_API_KEY`) | – |
+| `api_url` | yes, passed to the driver. LarAgent's `default` and `openai_responses` drivers always use api.openai.com; for a gateway use `OpenAiCompatible` (or Alfred's own client with `ALFRED_OPENAI_BASE_URL`) | – |
+| `model` | yes | `ALFRED_LARAGENT_MODEL` (first provider only) |
+| `default_max_completion_tokens` | yes when above 16000 (Alfred's minimum: LarAgent's stock 10000 would cut its explanations off) | `ALFRED_LARAGENT_MAX_TOKENS` (exact value, higher or lower) |
+| `default_temperature`, `default_top_p`, `default_frequency_penalty`, `default_presence_penalty` | no: these tune your app's own agents (a chatbot may want a creative temperature; reading code doesn't). Alfred sends none, so the model's default applies | `ALFRED_LARAGENT_TEMPERATURE` |
+| `parallel_tool_calls` | yes | – |
+| `default_providers` (top level), with per-provider overrides | yes, when `ALFRED_LARAGENT_PROVIDER` is empty: first is used, the rest are fallbacks | `ALFRED_LARAGENT_PROVIDER=a,b,c` |
+| `fallback_provider` (top level, older) | yes | – |
+| `default_truncation_threshold`, chat history, storage, `track_usage`, MCP servers | no: these belong to LarAgent's agents. Alfred runs its own loop on LarAgent's drivers, keeps no chat history beyond one run, and counts usage itself (`alfred:usage`) | – |
+
+**Fallbacks.** With several providers (`ALFRED_LARAGENT_PROVIDER=openai_responses,claude`, or LarAgent's `default_providers`), a provider that fails (an outage, a rate limit, a bad key) hands over to the next one for the rest of that explanation or change, and the switch is logged. A reply that was only cut off is retried on the same provider instead (see below).
+
+`php artisan alfred:doctor` lists each provider Alfred will use, with its model, whether a key is set (never the key), and the token limit.
+
+## When a reply is cut off
+
+Every model has a limit on how much it can write in one reply. If a reply hits it, Alfred asks the model once more for a shorter one; if that is cut off too, the person sees a message naming the setting to raise (`ALFRED_LARAGENT_MAX_TOKENS` through LarAgent; Alfred's own OpenAI client sets no limit of its own). A tool call whose arguments arrive broken is never run: the model is told and calls it again.
+
+Writing your own `LlmClient`? Throw `Atoria\Alfred\Llm\LlmCutOff` for a reply that was cut off, and pass each call's raw argument text as `raw`. You then get the same recovery.
 
 ## Usage and budgets
 
