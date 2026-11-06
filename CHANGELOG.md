@@ -6,6 +6,8 @@ All notable changes to Alfred are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-06
+
 ### Added
 - **AI-written ticket name and body** for both ticket flows (reports and
   changes): a specific, backlog-friendly name and a body with a summary,
@@ -162,7 +164,8 @@ First public release.
   `ChangeProposed`, `ChangeApplied`, `ChangeReverted`, `TicketCreated`,
   `PullRequestOpened`, `SuspiciousRequestBlocked`.
 
-[Unreleased]: https://github.com/Atoria/Alfred/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/Atoria/Alfred/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/Atoria/Alfred/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Atoria/Alfred/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Atoria/Alfred/compare/v1.0.3...v1.1.0
 [1.0.3]: https://github.com/Atoria/Alfred/compare/v1.0.2...v1.0.3
