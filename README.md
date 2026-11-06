@@ -504,7 +504,7 @@ When the tracker supports it, the ticket screen has **Assign to** and a second l
 
 | tracker | Assign to | second list |
 |---|---|---|
-| Jira | people who can be assigned in the project | **Sprint**: Backlog, or an active or future sprint of the project's Scrum board (`ALFRED_JIRA_BOARD` to pick a board) |
+| Jira | people who can be assigned in the project | **Sprint**: Backlog, or an active or future sprint of the project's board: company-managed Scrum or team-managed with sprints on (`ALFRED_JIRA_BOARD` to pick a board) |
 | Linear | active team members | **Cycle**: no cycle, the current or an upcoming cycle |
 | GitHub | the repo's assignees | **Milestone**: open milestones |
 | GitLab | project members (Reporter and up) | **Milestone**: active milestones |

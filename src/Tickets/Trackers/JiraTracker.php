@@ -126,19 +126,39 @@ class JiraTracker extends BaseTracker implements Plannable
         return ['assignees' => $assignees, 'destinations' => $destinations];
     }
 
-    /** Active and future sprints of the configured board, or the project's first Scrum board. */
+    /**
+     * Active and future sprints of the configured board, or of the project's
+     * first board that has sprints: company-managed Scrum boards ("scrum")
+     * and team-managed boards ("simple", sprints when the feature is on).
+     * Kanban boards have none.
+     */
     protected function sprints(): array
     {
         $board = trim((string) $this->config('board'));
-        if ($board === '') {
-            $boards = $this->call('the list of boards', fn () => $this->http()
-                ->get($this->base().'/rest/agile/1.0/board', ['projectKeyOrId' => $this->config('project'), 'type' => 'scrum', 'maxResults' => 1]));
-            $board = (string) ($boards->json('values.0.id') ?? '');
-            if ($board === '') {
-                return []; // Kanban only: no sprints, everything goes to the backlog
+        if ($board !== '') {
+            return $this->boardSprints($board);
+        }
+
+        $boards = (array) $this->call('the list of boards', fn () => $this->http()
+            ->get($this->base().'/rest/agile/1.0/board', ['projectKeyOrId' => $this->config('project'), 'maxResults' => 20]))->json('values', []);
+        usort($boards, fn ($a, $b) => (($a['type'] ?? '') === 'scrum' ? 0 : 1) <=> (($b['type'] ?? '') === 'scrum' ? 0 : 1));
+
+        foreach ($boards as $b) {
+            if (($b['type'] ?? '') === 'kanban') {
+                continue;
+            }
+            try {
+                return $this->boardSprints((string) $b['id']);
+            } catch (TrackerException) {
+                // "The board does not support sprints": try the next one
             }
         }
 
+        return [];
+    }
+
+    protected function boardSprints(string $board): array
+    {
         $sprints = $this->call('the list of sprints', fn () => $this->http()
             ->get($this->base().'/rest/agile/1.0/board/'.rawurlencode($board).'/sprint', ['state' => 'active,future', 'maxResults' => 50]));
 

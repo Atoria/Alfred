@@ -41,7 +41,7 @@ ALFRED_JIRA_EMAIL=you@example.com         # the account the API token belongs to
 ALFRED_JIRA_TOKEN=...                     # id.atlassian.com → Security → API tokens
 ALFRED_JIRA_PROJECT=PROJ                  # your project key
 ALFRED_JIRA_ISSUE_TYPE=Task               # optional
-ALFRED_JIRA_BOARD=12                      # optional: Scrum board for the Sprint list (default: the project's first Scrum board)
+ALFRED_JIRA_BOARD=12                      # optional: board for the Sprint list (default: the project's first board with sprints)
 ALFRED_JIRA_LABELS=alfred,ui-change       # optional, instead of ALFRED_TICKET_LABELS
 ```
 

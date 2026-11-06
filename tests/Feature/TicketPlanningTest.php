@@ -84,7 +84,8 @@ class TicketPlanningTest extends TestCase
                 ['accountId' => 'acc-1', 'displayName' => 'Giorgi', 'accountType' => 'atlassian', 'active' => true],
                 ['accountId' => 'bot', 'displayName' => 'Automation', 'accountType' => 'app', 'active' => true],
             ]),
-            'acme.atlassian.net/rest/agile/1.0/board?*' => Http::response(['values' => [['id' => 7, 'type' => 'scrum']]]),
+            // team-managed project: the board's type is "simple"; a kanban board has no sprints
+            'acme.atlassian.net/rest/agile/1.0/board?*' => Http::response(['values' => [['id' => 3, 'type' => 'kanban'], ['id' => 7, 'type' => 'simple']]]),
             'acme.atlassian.net/rest/agile/1.0/board/7/sprint*' => Http::response(['values' => [
                 ['id' => 12, 'name' => 'Sprint 12', 'state' => 'future', 'startDate' => '2026-11-16'],
                 ['id' => 11, 'name' => 'Sprint 11', 'state' => 'active', 'startDate' => '2026-11-02'],
@@ -167,6 +168,22 @@ class TicketPlanningTest extends TestCase
             && $r['fields']['description']['content'][1] === ['type' => 'heading', 'attrs' => ['level' => 3], 'content' => [['type' => 'text', 'text' => 'Expected result']]]
             && $r['fields']['description']['content'][2]['type'] === 'bulletList');
         Http::assertSent(fn (Request $r) => str_ends_with($r->url(), '/rest/agile/1.0/sprint/11/issue') && $r['issues'] === ['PROJ-5']);
+    }
+
+    public function test_a_board_without_sprints_is_skipped(): void
+    {
+        $this->jira();
+        Http::fake([
+            'acme.atlassian.net/rest/api/3/user/assignable/search*' => Http::response([]),
+            'acme.atlassian.net/rest/agile/1.0/board?*' => Http::response(['values' => [['id' => 4, 'type' => 'simple'], ['id' => 7, 'type' => 'simple']]]),
+            'acme.atlassian.net/rest/agile/1.0/board/4/sprint*' => Http::response(['errorMessages' => ['The board does not support sprints']], 400),
+            'acme.atlassian.net/rest/agile/1.0/board/7/sprint*' => Http::response(['values' => [['id' => 11, 'name' => 'MED Sprint 11', 'state' => 'active']]]),
+        ]);
+        $c = $this->request();
+
+        $this->actingAs($this->user('verifier@example.com'))->getJson("/_alfred/changes/{$c->id}/ticket/planning?tracker=jira")
+            ->assertJsonPath('destinations.1.name', 'MED Sprint 11');
+        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'type=scrum'));
     }
 
     public function test_backlog_and_unassigned_send_nothing_extra(): void

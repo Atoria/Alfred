@@ -559,7 +559,7 @@ return [
             'token' => env('ALFRED_JIRA_TOKEN'),
             'project' => env('ALFRED_JIRA_PROJECT'),    // project key, e.g. PROJ
             'issue_type' => env('ALFRED_JIRA_ISSUE_TYPE', 'Task'),
-            'board' => env('ALFRED_JIRA_BOARD'),        // optional Scrum board id for sprints; default: the project's first Scrum board
+            'board' => env('ALFRED_JIRA_BOARD'),        // optional board id for sprints; default: the project's first board with sprints
             'labels' => array_values(array_filter(array_map('trim', explode(',', (string) env('ALFRED_JIRA_LABELS', ''))))),
         ],
 

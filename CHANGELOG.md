@@ -6,6 +6,13 @@ All notable changes to Alfred are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-06
+
+### Fixed
+- The **Sprint** list showed only Backlog for team-managed Jira projects.
+  Their boards are of type "simple", not "scrum"; Alfred now uses the
+  project's first board that has sprints (skipping Kanban boards).
+
 ## [1.3.0] - 2026-11-06
 
 ### Added
@@ -164,7 +171,8 @@ First public release.
   `ChangeProposed`, `ChangeApplied`, `ChangeReverted`, `TicketCreated`,
   `PullRequestOpened`, `SuspiciousRequestBlocked`.
 
-[Unreleased]: https://github.com/Atoria/Alfred/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/Atoria/Alfred/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/Atoria/Alfred/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/Atoria/Alfred/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Atoria/Alfred/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Atoria/Alfred/compare/v1.0.3...v1.1.0
