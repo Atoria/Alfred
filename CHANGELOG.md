@@ -6,6 +6,15 @@ All notable changes to Alfred are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-11-06
+
+### Fixed
+- **Report or request** and **Change this** froze for a moment as the panel
+  opened. The element screenshot now starts after the panel has painted,
+  the screenshot library loads while you are still picking an element, and
+  the page's web fonts are embedded once per page instead of re-downloaded
+  and re-encoded on every screenshot.
+
 ## [1.3.1] - 2026-11-06
 
 ### Fixed
@@ -171,7 +180,8 @@ First public release.
   `ChangeProposed`, `ChangeApplied`, `ChangeReverted`, `TicketCreated`,
   `PullRequestOpened`, `SuspiciousRequestBlocked`.
 
-[Unreleased]: https://github.com/Atoria/Alfred/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/Atoria/Alfred/compare/v1.3.2...HEAD
+[1.3.2]: https://github.com/Atoria/Alfred/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/Atoria/Alfred/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/Atoria/Alfred/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/Atoria/Alfred/compare/v1.1.0...v1.2.0

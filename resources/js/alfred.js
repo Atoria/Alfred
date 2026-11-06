@@ -572,6 +572,7 @@
     document.addEventListener('mousemove', onMove, true);
     document.addEventListener('click', onPick, true);
     document.documentElement.style.cursor = 'crosshair';
+    warmScreenshots();
   }
 
   function stopInspect() {
@@ -1080,6 +1081,40 @@
     return libPromise;
   }
 
+  // Embedding web fonts is the slow part of a screenshot: html-to-image fetches
+  // every @font-face file and base64-encodes it, on the main thread, on EVERY
+  // capture. Do it once per page and hand the result to each capture.
+  // null = not built yet, '' = could not be built (capture without fonts).
+  var fontCssPromise = null;
+  function fontCss(lib) {
+    if (!fontCssPromise) {
+      fontCssPromise = lib.getFontEmbedCSS(document.body).then(
+        function (css) { return css || ''; },
+        function (err) { console.warn('[Alfred] web fonts left out of screenshots:', err); return ''; });
+    }
+    return fontCssPromise;
+  }
+  // A font loaded later (lazy icon font, new weight) makes the cached CSS stale.
+  if (document.fonts && document.fonts.addEventListener) {
+    document.fonts.addEventListener('loadingdone', function () { fontCssPromise = null; });
+  }
+
+  // Load the library and build the font CSS while the person is still picking
+  // an element, so "Report or request" does not pay for it.
+  function warmScreenshots() {
+    if (!config.screenshots) return;
+    var idle = window.requestIdleCallback || function (fn) { return setTimeout(fn, 200); };
+    idle(function () { screenshotLib().then(fontCss).catch(function () {}); });
+  }
+
+  // Resolves once the browser has painted what was just put on screen (the panel),
+  // so heavy work after it doesn't hold up the first frame.
+  function afterPaint() {
+    return new Promise(function (resolve) {
+      requestAnimationFrame(function () { setTimeout(resolve, 0); });
+    });
+  }
+
   function pageBackground(el) {
     for (var n = el; n && n.nodeType === 1; n = n.parentElement) {
       var bg = getComputedStyle(n).backgroundColor;
@@ -1135,7 +1170,8 @@
   }
 
   function renderImage(lib, node, options) {
-    return unreadableImages(node).then(function (bad) {
+    return Promise.all([unreadableImages(node), fontCss(lib)]).then(function (r) {
+      var bad = r[0], fonts = r[1];
       var opts = Object.assign({
         pixelRatio: Math.min(2, window.devicePixelRatio || 1),
         backgroundColor: pageBackground(node),
@@ -1146,7 +1182,7 @@
           if (n.tagName === 'IMG' && bad.length && bad.indexOf(n.currentSrc || n.src) !== -1) return false;
           return true;
         }
-      }, options || {});
+      }, fonts ? { fontEmbedCSS: fonts } : { skipFonts: true }, options || {});
       patchSerializer();
       return lib.toCanvas(node, opts).catch(function (err) {
         // Cross-origin web fonts are the other usual failure: retry without embedding them.
@@ -1539,7 +1575,9 @@
   // "Report / request": no AI — a note, a screenshot and the code location, straight to a ticket.
   function reportForm(el, previous, ctx) {
     var d = describe(el);
-    var shot = captureElement(el); // now, while it looks the way the reporter means
+    // Right away, while it looks the way the reporter means, but after the panel
+    // has painted: the capture is main-thread work and froze the panel's opening.
+    var shot = afterPaint().then(function () { return captureElement(el); });
     var body = openPanel('Report: ' + (d.column || d.labels[0] || d.tag));
     body.appendChild(ctx ? backTo('Back to explanation', backToExplanation) : backTo('Back', function () { choose(el); }));
     var box = h('textarea', { placeholder: 'What is wrong, or what would you like? e.g. "This total should leave out cancelled orders", "Please add a filter by region"', rows: '6' });
@@ -1596,7 +1634,7 @@
   function propose(el, d, instruction, ctx) {
     var body = openPanel('Change');
     loading(body, NAME + ' is finding the code and preparing the change… this usually takes 20–60 seconds.');
-    var before = captureElement(el); // taken now, while the page still looks the way it was
+    var before = afterPaint().then(function () { return captureElement(el); }); // taken now (once the panel has painted), while the page still looks the way it was
     api('POST', '/changes', { token: config.token, element: d, instruction: instruction, explanation: ctx ? ctx.explanation : null, thread: ctx ? ctx.thread : null })
       .then(function (c) {
         renderChange(c, el);
