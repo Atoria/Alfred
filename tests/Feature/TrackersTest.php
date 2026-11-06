@@ -232,7 +232,7 @@ class TrackersTest extends TestCase
         $c = $this->change();
 
         $this->actingAs($this->user('verifier@example.com'))->getJson("/_alfred/changes/{$c->id}/ticket")->assertOk()
-            ->assertJsonPath('trackers', [['name' => 'github', 'label' => 'GitHub', 'target' => 'acme/app'], ['name' => 'trello', 'label' => 'Trello', 'target' => 'Inbox']]);
+            ->assertJsonPath('trackers', [['name' => 'github', 'label' => 'GitHub', 'target' => 'acme/app', 'planning' => true], ['name' => 'trello', 'label' => 'Trello', 'target' => 'Inbox', 'planning' => true]]);
 
         $this->send($c, 'jira')->assertStatus(422);
         $this->send($c, 'trello')->assertCreated()->assertJson(['provider' => 'trello']);

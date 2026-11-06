@@ -8,6 +8,8 @@ namespace Atoria\Alfred\Tickets;
  * Trackers that speak Markdown use body(); Jira uses $adf. Files are the
  * ticked screenshots (plus the full patch when the diff is too long to
  * inline). Trackers that cannot upload files link to $screenshotUrls instead.
+ * $assignee and $destination are only set for trackers that offer them
+ * (Plannable) and were checked against what the tracker offered.
  */
 final class Ticket
 {
@@ -15,6 +17,8 @@ final class Ticket
      * @param  string[]  $labels
      * @param  array<int, array{kind: string, filename: string, contents: string, mime: string}>  $files
      * @param  array<string, string>  $screenshotUrls  kind => URL of the screenshot in Alfred (needs sign-in)
+     * @param  ?string  $assignee  the tracker's own id of the person picked in "Assign to" (null: unassigned)
+     * @param  ?string  $destination  the tracker's own id of the sprint / list / milestone / section picked (null: the default place)
      */
     public function __construct(
         public readonly string $title,
@@ -26,6 +30,8 @@ final class Ticket
         public readonly array $screenshotUrls,
         public readonly array $labels,
         public readonly int $changeId,
+        public readonly ?string $assignee = null,
+        public readonly ?string $destination = null,
     ) {}
 
     /** Markdown body; $sections (already Markdown) go before the footer, e.g. embedded images. */

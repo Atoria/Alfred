@@ -477,18 +477,42 @@ After clicking an element, everyone allowed to use Alfred also gets **Report or 
 
 1. Alfred takes a screenshot of the element straight away.
 2. The person writes what's wrong or what they need, in their own words.
-3. The ticket screen opens with a title (the first line), the description, the screenshot and a **Where in the code** section with only what matters for that element: the route and controller, its Livewire/Filament or front-end component and file, the views named after it (or the page's own view), and up to three lines of code that load its data. When the report started from an explanation, the code path the explanation traced replaces the raw query lines.
+3. The ticket screen opens with a ticket name and body written by the AI from those words (see [Ticket name and body](#ticket-name-and-body)), the screenshot and a **Where in the code** section with only what matters for that element: the route and controller, its Livewire/Filament or front-end component and file, the views named after it (or the page's own view), and up to three lines of code that load its data. When the report started from an explanation, the code path the explanation traced replaces the raw query lines.
 
-A developer picking up the ticket knows exactly where to start. People who can only report see their own requests, not other people's changes, and the change view shows code (diffs, files, what the agent read) only to people allowed to see code (`viewAlfredCode`). The ticket text always carries the code location, since that is what developers need. Turn it off with `ALFRED_REPORT=false`, or limit it with the `reportAlfred` gate.
+A developer picking up the ticket knows exactly where to start. People who can only report see their own requests, not other people's changes, and the change view shows code (diffs, files, what the agent read) only to people allowed to see code (`viewAlfredCode`). The ticket text always carries the code location, since that is what developers need. Turn it off with `ALFRED_REPORT=false`, or limit it with the `reportAlfred` gate. Writing the ticket name and body is the only AI step, and it can be turned off too (`ALFRED_TICKET_AI=false`).
 
 ### Tickets for changes
 
 Every change has **Prepare ticket**. Alfred drafts:
-- a title
-- a description: who asked for what, on which page, and whether it was already applied or previewed
+- a ticket name and body (below)
 - page details, where it lives in the code, the files and the diff
 
 You can edit the draft before sending.
+
+### Ticket name and body
+
+For both reports and changes, the AI writes the ticket the way a developer wants to read it, in one short model call when the ticket screen opens:
+
+- **Ticket name:** specific and scannable in a backlog, e.g. *Exclude cancelled orders from the Revenue total on Dashboard* instead of the requester's sentence.
+- **Body:** a short summary, *Current behaviour*, *Expected result*, *Proposed change* (for changes), *Acceptance criteria* and, only if something is unclear, *Open questions*. It uses only what the requester wrote, what Alfred explained and what the change does, and writes in the requester's language. Their original words are always quoted at the end, unchanged.
+
+Both stay editable, **Rewrite with AI** writes them again, and **Preview the ticket** shows exactly what will be sent: the name, the full body with the details below it, the attached screenshots, and where it goes (tracker, sprint, assignee). Jira gets real headings and lists. If the AI is unavailable or over its budget, the plain draft is used. `ALFRED_TICKET_AI=false` turns it off; `ALFRED_TICKET_REASONING_EFFORT` (default `low`) sets the effort. Usage counts towards the AI budgets as kind `ticket`.
+
+### Assign to and sprint
+
+When the tracker supports it, the ticket screen has **Assign to** and a second list for where the ticket goes. Both are read from the tracker (cached for 5 minutes) and default to *Unassigned* and the tracker's usual place:
+
+| tracker | Assign to | second list |
+|---|---|---|
+| Jira | people who can be assigned in the project | **Sprint**: Backlog, or an active or future sprint of the project's Scrum board (`ALFRED_JIRA_BOARD` to pick a board) |
+| Linear | active team members | **Cycle**: no cycle, the current or an upcoming cycle |
+| GitHub | the repo's assignees | **Milestone**: open milestones |
+| GitLab | project members (Reporter and up) | **Milestone**: active milestones |
+| Trello | board members | **List**: open lists on the board (default: `ALFRED_TRELLO_LIST_ID`) |
+| ClickUp | list members | **List / sprint**: lists in the same folder, so sprint folders work |
+| Asana | project members | **Section** |
+
+Only people and places the tracker offered can be picked. If the tracker can't be reached for them, the ticket can still be created without. `ALFRED_TICKET_PLANNING=false` hides both lists; `ALFRED_TICKET_PLANNING_CACHE` sets the cache time in seconds.
 
 Screenshots are included:
 

@@ -51,7 +51,7 @@ class TicketBuilder
     /** @param  string[]  $attached screenshot kinds that will be attached */
     public function adf(Change $change, string $description, bool $includeDiff, array $attached): array
     {
-        $blocks = Adf::paragraphs($description);
+        $blocks = Adf::markdown($description);
         $blocks[] = Adf::heading('Details');
         $blocks[] = Adf::bullets($this->detailItems($change, true));
 
@@ -80,7 +80,7 @@ class TicketBuilder
      *
      * @param  string[]  $kinds  screenshot kinds to attach
      */
-    public function ticket(Change $change, string $title, string $description, bool $includeDiff, array $kinds): Ticket
+    public function ticket(Change $change, string $title, string $description, bool $includeDiff, array $kinds, ?string $assignee = null, ?string $destination = null): Ticket
     {
         $files = [];
         $urls = [];
@@ -105,6 +105,8 @@ class TicketBuilder
             screenshotUrls: $urls,
             labels: (array) config('alfred.tickets.labels', []),
             changeId: (int) $change->id,
+            assignee: $assignee !== '' ? $assignee : null,
+            destination: $destination !== '' ? $destination : null,
         );
     }
 

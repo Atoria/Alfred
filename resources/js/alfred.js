@@ -503,6 +503,10 @@
     '.toast .btn{height:28px;padding:0 10px;font-size:12px;border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:#fff;box-shadow:none}.toast .btn:hover{background:rgba(255,255,255,.16)}',
     '.section{margin-top:22px}',
     'details.fold{margin:6px 0 0;border:1px solid var(--line);border-radius:10px;padding:10px 12px}details.fold summary{font-weight:600;color:var(--fg)}details.fold[open] summary{margin-bottom:10px}',
+    '.ai-row{display:flex;gap:10px;align-items:center;justify-content:space-between;margin:0 0 10px}.ai-row .ai-note{margin:0;flex:1;min-width:0}.ai-row .btn{flex:none}',
+    'input.writing,textarea.writing{opacity:.55;cursor:progress}',
+    '.plan{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}.plan>div{min-width:0}@media (max-width:420px){.plan{grid-template-columns:1fr}}.plan-note:empty{display:none}',
+    '.tk-pv .pv-k{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:10px 0 4px}.tk-pv .pv-title{font-weight:600;font-size:14px;color:var(--fg)}.tk-pv .pv-meta{font-size:12.5px;color:var(--fg);background:var(--soft);border-radius:8px;padding:6px 9px}.tk-pv .pv-body{max-height:340px;overflow:auto;margin:0}',
     '.item{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .12s,box-shadow .12s}.item:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));box-shadow:0 4px 14px rgba(16,24,40,.08)}'
   ].join('\n') }));
 
@@ -1282,14 +1286,45 @@
     if (made) body.appendChild(success((made.label || 'Ticket') + ' ticket ' + made.key + ' created', btn('Open', { size: 'sm', href: made.url, external: true })));
     if (d.pull_request && d.pull_request.key) body.appendChild(success(prLabel(d.pull_request) + ' opened', btn('View', { size: 'sm', href: d.pull_request.url, external: true })));
 
-    var title = h('input', { value: d.title });
-    var desc = h('textarea', { rows: '8' }); desc.value = d.description;
+    var title = h('input', { value: d.title, 'aria-label': 'Ticket name' });
+    var desc = h('textarea', { rows: '12', 'aria-label': 'Ticket body' }); desc.value = d.description;
     var diff = h('input', { type: 'checkbox' }); diff.checked = !!d.include_diff;
     // Once the ticket exists, its text is only there to copy: fold it away.
     var form = made ? h('details', { class: 'fold' }, [h('summary', { text: 'Ticket text' })]) : body;
-    form.appendChild(h('label', { class: 'f', text: 'Title' }));
+
+    // The AI writes the name and body (summary, expected result, acceptance criteria);
+    // the plain draft stays underneath if it can't.
+    var aiNote = h('p', { class: 'muted ai-note' });
+    var rewrite = d.ai_draft && !made ? btn('Rewrite with AI', { kind: 'ghost', size: 'sm', icon: 'wand', title: 'Let ' + NAME + ' write the ticket name and body again (replaces your edits)', onclick: function () { writeWithAi(); } }) : null;
+    function writeWithAi() {
+      var keep = { t: title.value, b: desc.value };
+      title.disabled = desc.disabled = true;
+      title.classList.add('writing'); desc.classList.add('writing');
+      busy(rewrite, 'Writing…');
+      aiNote.textContent = NAME + ' is writing the ticket name and body…';
+      api('POST', '/changes/' + c.id + '/ticket/write').then(function (res) {
+        d.title = res.title; d.description = res.description; d.ai_written = true;
+        if (!title.isConnected) return;
+        title.value = res.title; desc.value = res.description;
+        aiNote.textContent = 'Written by ' + NAME + ' from the request. Edit anything before sending; your original words are quoted at the end.';
+      }).catch(function (err) {
+        d.ai_written = true; // keep the plain draft; don't ask again on every redraw
+        if (!title.isConnected) return;
+        title.value = keep.t; desc.value = keep.b;
+        aiNote.textContent = (err && err.message) || 'The AI could not write the ticket. The plain draft is below.';
+      }).then(function () {
+        if (!title.isConnected) return;
+        title.disabled = desc.disabled = false;
+        title.classList.remove('writing'); desc.classList.remove('writing');
+        idle(rewrite, 'Rewrite with AI');
+        refreshPreview();
+      });
+    }
+
+    if (rewrite) form.appendChild(h('div', { class: 'ai-row' }, [aiNote, rewrite]));
+    form.appendChild(h('label', { class: 'f', text: 'Ticket name' }));
     form.appendChild(title);
-    form.appendChild(h('label', { class: 'f', text: 'Description' }));
+    form.appendChild(h('label', { class: 'f', text: 'Body' }));
     form.appendChild(desc);
     form.appendChild(h('label', { class: 'check' }, [diff, h('span', { text: c.kind === 'request' ? 'Include page details and where it lives in the code' : 'Include the code diff, page details and where it lives in the code' })]));
     if (made) body.appendChild(form);
@@ -1303,7 +1338,7 @@
       kinds.forEach(function (k) {
         if (!(k in picks)) picks[k] = true;
         var cb = h('input', { type: 'checkbox' }); cb.checked = picks[k];
-        cb.addEventListener('change', function () { picks[k] = cb.checked; });
+        cb.addEventListener('change', function () { picks[k] = cb.checked; refreshPreview(); });
         shotsBox.appendChild(h('div', { class: 'shot' }, [
           h('img', { src: shotUrl(c, k), alt: k + ' screenshot', title: 'Open full size', onclick: function () { window.open(shotUrl(c, k), '_blank'); } }),
           h('div', { class: 'shot-foot' }, [
@@ -1335,8 +1370,39 @@
       if (c.status === 'applied') body.appendChild(h('p', { class: 'muted', style: 'margin-top:6px', text: 'The change is applied, so the current view shows the result.' }));
     }
 
+    function bodyText() {
+      return desc.value.trim() + (diff.checked ? '\n\n' + d.details_markdown.trim() : '');
+    }
     function fullText() {
-      return '# ' + title.value + '\n\n' + desc.value + '\n\n' + (diff.checked ? d.details_markdown : '');
+      return '# ' + title.value + '\n\n' + bodyText() + '\n';
+    }
+
+    // Preview: exactly what goes to the tracker — name, where, who, body.
+    var pvMeta = h('div', { class: 'pv-meta' });
+    var pvTitle = h('div', { class: 'pv-title' });
+    var pvBody = h('pre', { class: 'pv-body' });
+    var pvShots = h('p', { class: 'muted' });
+    var placeText = function () { return ''; }; // filled in once the tracker choices exist
+    function refreshPreview() {
+      pvTitle.textContent = title.value.trim() || '(no name yet)';
+      pvBody.textContent = bodyText();
+      var chosenShots = kinds.filter(function (k) { return picks[k]; }).map(function (k) { return k === 'before' ? 'before' : 'current view'; });
+      pvShots.textContent = chosenShots.length ? 'Screenshots attached: ' + chosenShots.join(', ') + '.' : '';
+      pvMeta.textContent = placeText();
+      pvMeta.style.display = pvMeta.textContent ? '' : 'none';
+    }
+    var preview = null;
+    if (!made) {
+      preview = h('details', { class: 'fold tk-pv', style: 'margin-top:16px' }, [
+        h('summary', { text: 'Preview the ticket' }),
+        pvMeta,
+        h('div', { class: 'pv-k', text: 'Ticket name' }), pvTitle,
+        h('div', { class: 'pv-k', text: 'Body' }), pvBody, pvShots
+      ]);
+      preview.addEventListener('toggle', refreshPreview);
+      title.addEventListener('input', refreshPreview);
+      desc.addEventListener('input', refreshPreview);
+      diff.addEventListener('change', refreshPreview);
     }
     var copy = btn('Copy text', { icon: 'copy', title: 'Copy the ticket as Markdown', onclick: function () {
       copyText(fullText()).then(function () { setLabel(copy, 'Copied'); setTimeout(function () { setLabel(copy, 'Copy text'); }, 1500); })
@@ -1351,10 +1417,71 @@
         var pick = h('select', { class: 'pick', 'aria-label': 'Send to' }, trackers.map(function (t, i) {
           return h('option', { value: String(i), text: t.label + (t.target ? ' — ' + t.target : '') });
         }));
-        pick.addEventListener('change', function () { chosen = trackers[+pick.value]; setLabel(create, createLabel()); });
+        pick.addEventListener('change', function () { chosen = trackers[+pick.value]; setLabel(create, createLabel()); loadPlanning(); });
         body.appendChild(h('label', { class: 'f', style: 'margin-top:18px', text: 'Send to' }));
         body.appendChild(pick);
       }
+
+      // "Assign to" and "Sprint" (or list / cycle / milestone / section — whatever the tracker has).
+      var assignSel = h('select', { class: 'pick', 'aria-label': 'Assign to' });
+      var destSel = h('select', { class: 'pick', 'aria-label': 'Sprint' });
+      var destLabel = h('label', { class: 'f', text: 'Sprint' });
+      var assignCol = h('div', {}, [h('label', { class: 'f', text: 'Assign to' }), assignSel]);
+      var destCol = h('div', {}, [destLabel, destSel]);
+      var planBox = h('div', { class: 'plan', style: 'margin-top:' + (trackers.length > 1 ? '0' : '18px') }, [assignCol, destCol]);
+      var planNote = h('p', { class: 'muted plan-note' });
+      var planFor = null; // tracker whose choices are in the selects
+      var plans = {};
+      var options = function (sel, items) {
+        sel.textContent = '';
+        items.forEach(function (o) {
+          var opt = h('option', { value: o.id, text: o.name + (o.hint ? ' · ' + o.hint : '') });
+          if (o['default']) opt.selected = true;
+          sel.appendChild(opt);
+        });
+      };
+      function loadPlanning() {
+        var t = chosen;
+        planFor = null; planNote.textContent = '';
+        if (!t.planning) { planBox.style.display = 'none'; refreshPreview(); return; }
+        planBox.style.display = ''; assignCol.style.display = destCol.style.display = '';
+        options(assignSel, [{ id: '', name: 'Loading…' }]); options(destSel, [{ id: '', name: 'Loading…' }]);
+        assignSel.disabled = destSel.disabled = true;
+        (plans[t.name] ? Promise.resolve(plans[t.name]) : api('GET', '/changes/' + c.id + '/ticket/planning?tracker=' + encodeURIComponent(t.name))).then(function (p) {
+          plans[t.name] = p;
+          if (t !== chosen || !assignSel.isConnected) return;
+          destLabel.textContent = p.destination_label || 'Sprint';
+          destSel.setAttribute('aria-label', destLabel.textContent);
+          options(assignSel, [{ id: '', name: 'Unassigned' }].concat(p.assignees || []));
+          options(destSel, p.destinations || []);
+          assignSel.disabled = destSel.disabled = false;
+          assignCol.style.display = (p.assignees || []).length ? '' : 'none';
+          destCol.style.display = (p.destinations || []).length ? '' : 'none';
+          if (!(p.assignees || []).length && !(p.destinations || []).length) planBox.style.display = 'none';
+          if (p.message) planNote.textContent = p.message + ' The ticket can still be created.';
+          planFor = t;
+          refreshPreview();
+        }).catch(function (err) {
+          if (t !== chosen || !assignSel.isConnected) return;
+          planBox.style.display = 'none';
+          planNote.textContent = 'Could not load people and sprints: ' + ((err && err.message) || 'unknown error') + '. The ticket can still be created.';
+        });
+      }
+      var selectedText = function (sel) { var o = sel.options[sel.selectedIndex]; return o ? o.textContent : ''; };
+      placeText = function () {
+        var parts = [chosen.label + (chosen.target ? ' · ' + chosen.target : '')];
+        if (planFor === chosen) {
+          if (destCol.style.display !== 'none' && selectedText(destSel)) parts.push(destLabel.textContent + ': ' + selectedText(destSel));
+          parts.push(assignSel.value ? 'Assigned to ' + selectedText(assignSel) : 'Unassigned');
+        }
+        return 'Goes to ' + parts.join(' · ');
+      };
+      assignSel.addEventListener('change', refreshPreview);
+      destSel.addEventListener('change', refreshPreview);
+      body.appendChild(planBox);
+      body.appendChild(planNote);
+      loadPlanning();
+
       // "Also open a pull request": the ticket is created first, so the PR carries its key and link.
       var withPr = null, prChosen = null;
       var prs = d.pull_requests || [];
@@ -1371,6 +1498,8 @@
         api('POST', '/changes/' + c.id + '/ticket', {
           tracker: chosen.name, title: title.value, description: desc.value, include_diff: diff.checked,
           screenshots: kinds.filter(function (k) { return picks[k]; }),
+          assignee: planFor === chosen ? assignSel.value || null : null,
+          destination: planFor === chosen && destCol.style.display !== 'none' ? destSel.value || null : null,
           pull_request: !!(withPr && withPr.checked), pull_request_provider: prChosen ? prChosen.name : null
         }).then(function (res) {
           d.ticket = res; d.screenshots = kinds; d.pull_request = res.pull_request;
@@ -1378,13 +1507,21 @@
           if (res.warnings && res.warnings.length) alertInPanel(new Error(res.warnings.join(' ')));
         }).catch(function (err) { idle(create, createLabel()); alertInPanel(err); });
       } });
+      body.appendChild(preview);
       body.appendChild(actionBar([create, copy]));
     } else if (made) {
       body.appendChild(actionBar([btn('Open ' + made.key, { kind: 'primary', href: made.url, external: true }), copy]));
     } else {
+      body.appendChild(preview);
       body.appendChild(h('p', { class: 'muted', style: 'margin-top:14px', text: 'No ticket tracker is connected, so copy the text and attach the downloaded screenshots. To create tickets directly, set ALFRED_TICKETS (Jira, GitHub, GitLab, Linear, Trello, ClickUp or Asana).' }));
       body.appendChild(actionBar([copy]));
       copy.classList.add('primary');
+    }
+
+    if (!made) refreshPreview();
+    if (rewrite) {
+      if (!d.ai_written) writeWithAi();
+      else aiNote.textContent = 'Written by ' + NAME + '. Edit anything before sending.';
     }
   }
 

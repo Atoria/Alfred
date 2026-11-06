@@ -11,7 +11,12 @@ ALFRED_TICKETS=jira                  # one tracker
 ALFRED_TICKETS=github,trello         # several: the first is the default, people pick in a "Send to" list
 ALFRED_TICKET_LABELS=alfred,ui-change    # labels/tags added to every ticket, where the tracker supports them
 ALFRED_TICKET_INCLUDE_DIFF=true      # page details, code location and diff in the ticket (people can untick it)
+ALFRED_TICKET_AI=true                # the AI writes the ticket name and body (summary, expected result, acceptance criteria)
+ALFRED_TICKET_PLANNING=true          # "Assign to" and "Sprint" / list / milestone choices, read from the tracker
+ALFRED_TICKET_PLANNING_CACHE=300     # seconds to cache those choices
 ```
+
+What each tracker offers in **Assign to** and the second list is in the [README](../README.md#assign-to-and-sprint). The API token needs read access to the people and sprints/lists/milestones as well (Jira: *Browse users* and the board; GitHub: *Issues* covers assignees and milestones).
 
 With no tracker set up, the ticket screen offers **Copy ticket text** (Markdown) and screenshot downloads, so you can paste it anywhere.
 
@@ -36,6 +41,7 @@ ALFRED_JIRA_EMAIL=you@example.com         # the account the API token belongs to
 ALFRED_JIRA_TOKEN=...                     # id.atlassian.com → Security → API tokens
 ALFRED_JIRA_PROJECT=PROJ                  # your project key
 ALFRED_JIRA_ISSUE_TYPE=Task               # optional
+ALFRED_JIRA_BOARD=12                      # optional: Scrum board for the Sprint list (default: the project's first Scrum board)
 ALFRED_JIRA_LABELS=alfred,ui-change       # optional, instead of ALFRED_TICKET_LABELS
 ```
 
@@ -143,5 +149,29 @@ class YouTrackTracker extends BaseTracker
 ```
 
 `$ticket` also has `->adf` (Jira's format), `->files` and `->images()` (the screenshots, plus the full patch when the diff is long) and `->screenshotUrls`.
+
+To offer **Assign to** and a sprint (or list, milestone…) for your tracker, also implement `Atoria\Alfred\Tickets\Trackers\Plannable`. Alfred checks the picked ids against what `planning()` returned and passes them in as `$ticket->assignee` and `$ticket->destination` (null when nothing was picked):
+
+```php
+use Atoria\Alfred\Tickets\Trackers\Plannable;
+
+class YouTrackTracker extends BaseTracker implements Plannable
+{
+    public function destinationLabel(): string { return 'Sprint'; }
+
+    public function planning(): array
+    {
+        return [
+            'assignees' => [['id' => 'nino', 'name' => 'Nino Kapanadze']],
+            'destinations' => [
+                ['id' => '', 'name' => 'Backlog', 'default' => true], // "" = the tracker's usual place
+                ['id' => '42', 'name' => 'Sprint 7', 'hint' => 'active'],
+            ],
+        ];
+    }
+
+    // in create(): use $ticket->assignee and $ticket->destination when set
+}
+```
 
 Screenshots are taken in the browser with the bundled [html-to-image](https://github.com/bubkoo/html-to-image) (MIT) and stored on your server. Images from other sites that don't allow copying, such as some avatar services, are left out of the screenshot rather than breaking it.

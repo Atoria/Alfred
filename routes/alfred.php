@@ -53,11 +53,13 @@ Route::group([
     Route::get('changes/{change}/patch', [ChangeController::class, 'patch'])->name('changes.patch');
     Route::post('changes/{change}/preview', [ChangeController::class, 'preview'])->name('changes.preview');
 
-    // Screenshots + Jira tickets for a change
+    // Screenshots + tickets for a change (AI-written name/body, assignee and sprint choices)
     Route::post('changes/{change}/screenshots', [TicketController::class, 'storeScreenshot'])->name('changes.screenshots.store');
     Route::get('changes/{change}/screenshots/{kind}', [TicketController::class, 'showScreenshot'])->whereIn('kind', ['before', 'after'])->name('changes.screenshots.show');
     Route::get('changes/{change}/ticket', [TicketController::class, 'draft'])->name('changes.ticket.draft');
     Route::post('changes/{change}/ticket', [TicketController::class, 'create'])->name('changes.ticket.create');
+    Route::post('changes/{change}/ticket/write', [TicketController::class, 'write'])->name('changes.ticket.write');
+    Route::get('changes/{change}/ticket/planning', [TicketController::class, 'planning'])->name('changes.ticket.planning');
 
     // Pull requests for a change
     Route::get('changes/{change}/pull-request', [PullRequestController::class, 'draft'])->name('changes.pull-request.draft');

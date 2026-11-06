@@ -512,6 +512,18 @@ return [
     | Add your own by implementing Atoria\Alfred\Tickets\Trackers\Tracker and
     | listing it in "custom" (name => class), then use its name above.
     |
+    | "ai_draft": the AI writes the ticket name and body (summary, expected
+    | result, acceptance criteria; the requester's words are quoted as-is).
+    | One short model call when the ticket form opens; people can edit the
+    | result or rewrite it. Off: the plain template draft only.
+    |
+    | "planning": "Assign to" and "Sprint" dropdowns, filled from the
+    | tracker (cached for planning_cache_seconds). What the second one is:
+    | Jira — sprint (active/future) or backlog · Linear — cycle ·
+    | GitHub/GitLab — milestone · Trello — list on the board · ClickUp — list
+    | in the same folder (sprints) · Asana — section. Custom trackers get
+    | them by implementing Atoria\Alfred\Tickets\Trackers\Plannable.
+    |
     */
 
     'tickets' => [
@@ -524,6 +536,10 @@ return [
             explode(',', (string) env('ALFRED_TICKET_LABELS', 'alfred'))
         ))),
         'include_diff' => (bool) env('ALFRED_TICKET_INCLUDE_DIFF', env('ALFRED_JIRA_INCLUDE_DIFF', true)),
+        'ai_draft' => (bool) env('ALFRED_TICKET_AI', true),
+        'reasoning_effort' => env('ALFRED_TICKET_REASONING_EFFORT', 'low'),
+        'planning' => (bool) env('ALFRED_TICKET_PLANNING', true),
+        'planning_cache_seconds' => (int) env('ALFRED_TICKET_PLANNING_CACHE', 300),
         'custom' => [
             // 'youtrack' => App\Alfred\YouTrackTracker::class,
         ],
@@ -543,6 +559,7 @@ return [
             'token' => env('ALFRED_JIRA_TOKEN'),
             'project' => env('ALFRED_JIRA_PROJECT'),    // project key, e.g. PROJ
             'issue_type' => env('ALFRED_JIRA_ISSUE_TYPE', 'Task'),
+            'board' => env('ALFRED_JIRA_BOARD'),        // optional Scrum board id for sprints; default: the project's first Scrum board
             'labels' => array_values(array_filter(array_map('trim', explode(',', (string) env('ALFRED_JIRA_LABELS', ''))))),
         ],
 

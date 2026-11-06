@@ -6,6 +6,25 @@ All notable changes to Alfred are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **AI-written ticket name and body** for both ticket flows (reports and
+  changes): a specific, backlog-friendly name and a body with a summary,
+  current behaviour, expected result, proposed change, acceptance criteria
+  and open questions. The requester's words are quoted at the end
+  unchanged. Editable, with **Rewrite with AI**; falls back to the plain
+  draft. `ALFRED_TICKET_AI`, `ALFRED_TICKET_REASONING_EFFORT`.
+- **Preview the ticket**: the exact name, body, details, screenshots and
+  destination (tracker, sprint, assignee) before sending.
+- **Assign to** and **Sprint** (Jira sprints or backlog, Linear cycles,
+  GitHub/GitLab milestones, Trello lists, ClickUp lists, Asana sections),
+  read from the tracker and cached. `ALFRED_TICKET_PLANNING`,
+  `ALFRED_TICKET_PLANNING_CACHE`, `ALFRED_JIRA_BOARD`. Custom trackers
+  opt in with the `Plannable` interface.
+
+### Changed
+- Jira descriptions render `###` headings, lists and quotes as real
+  formatting instead of plain text.
+
 ## [1.2.0] - 2026-10-24
 
 ### Added

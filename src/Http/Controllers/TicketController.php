@@ -5,12 +5,17 @@ namespace Atoria\Alfred\Http\Controllers;
 use Atoria\Alfred\Alfred;
 use Atoria\Alfred\Changes\Change;
 use Atoria\Alfred\Events\TicketCreated;
+use Atoria\Alfred\Explanations\TooManyGenerations;
+use Atoria\Alfred\Llm\LlmException;
 use Atoria\Alfred\PullRequests\PullRequestException;
 use Atoria\Alfred\PullRequests\PullRequestOpener;
 use Atoria\Alfred\Support\Limits;
+use Atoria\Alfred\Tickets\Planning;
 use Atoria\Alfred\Tickets\Screenshots;
 use Atoria\Alfred\Tickets\TicketBuilder;
+use Atoria\Alfred\Tickets\TicketWriter;
 use Atoria\Alfred\Tickets\TrackerException;
+use Atoria\Alfred\Tickets\Trackers\Plannable;
 use Atoria\Alfred\Tickets\Trackers\Tracker;
 use Atoria\Alfred\Tickets\Trackers\TrackerManager;
 use Illuminate\Contracts\Cache\LockProvider;
@@ -29,6 +34,7 @@ class TicketController extends Controller
         protected Alfred $alfred,
         protected Screenshots $screenshots,
         protected TrackerManager $trackers,
+        protected Planning $planning,
     ) {}
 
     public function storeScreenshot(Request $request, Change $change): JsonResponse
@@ -75,13 +81,64 @@ class TicketController extends Controller
             'screenshots' => $this->screenshots->kinds($change),
             'screenshots_enabled' => $this->screenshots->enabled(),
             'include_diff' => $includeDiff,
-            'trackers' => array_map(fn (Tracker $t) => ['name' => $t->name(), 'label' => $t->label(), 'target' => $t->target()], $this->trackers->available()),
+            'trackers' => array_map(fn (Tracker $t) => ['name' => $t->name(), 'label' => $t->label(), 'target' => $t->target(), 'planning' => $this->planning->supports($t)], $this->trackers->available()),
+            // The overlay asks for an AI-written name and body right away (POST …/ticket/write).
+            'ai_draft' => app(TicketWriter::class)->enabled() && ! $change->ticket_key,
             'listed' => $this->trackers->listed(),
             'ticket' => $this->ticketInfo($change),
             // Offered as "also open a pull request" when this person may and the change has code.
             'pull_requests' => $this->alfred->canEdit($this->alfred->user($request)) && $this->opener()->eligible($change) ? $this->opener()->choices() : [],
             'pull_request' => $this->opener()->info($change),
         ]);
+    }
+
+    /** An AI-written ticket name and body, for the form to show (and the person to edit) before creating. */
+    public function write(Request $request, Change $change, TicketWriter $writer): JsonResponse
+    {
+        $this->authorizeChange($request, $change);
+        abort_unless($writer->enabled(), 404);
+
+        if ($limited = Limits::hit($request, 'ticket-write', 6, 2)) {
+            return $limited;
+        }
+
+        try {
+            return response()->json($writer->write($change, $this->alfred->userKey($request)));
+        } catch (TooManyGenerations $e) {
+            return response()->json(['message' => $e->getMessage()], 429)->header('Retry-After', (string) $e->retryAfter);
+        } catch (LlmException $e) {
+            report($e);
+
+            return response()->json(['message' => 'The AI could not write the ticket ('.$e->getMessage().'). The plain draft is still there to edit.'], 502);
+        }
+    }
+
+    /** "Assign to" and "Sprint / list / milestone" choices for one tracker. */
+    public function planning(Request $request, Change $change): JsonResponse
+    {
+        $this->authorizeChange($request, $change);
+        $user = $this->alfred->user($request);
+        if ($user === null && ! config('alfred.guests.tickets', false)) {
+            return response()->json(['message' => 'Sign in to send this to the tracker.'], 403);
+        }
+
+        $tracker = $this->trackers->find($request->query('tracker') ? (string) $request->query('tracker') : null);
+        abort_if($tracker === null, 404);
+        if ($limited = Limits::hit($request, 'ticket-planning', 20, 5)) {
+            return $limited;
+        }
+
+        try {
+            return response()->json($this->planning->for($tracker, $request->boolean('fresh')));
+        } catch (TrackerException $e) {
+            report($e);
+
+            // The ticket can still be created, just without these choices.
+            return response()->json(['supported' => true, 'assignees' => [], 'destinations' => [], 'destination_label' => null,
+                'message' => $this->alfred->canEdit($user) || $this->alfred->canVerify($user)
+                    ? 'Could not load people and sprints: '.$e->getMessage()
+                    : 'Could not load people and sprints from the tracker.']);
+        }
     }
 
     public function create(Request $request, Change $change, TicketBuilder $builder): JsonResponse
@@ -97,6 +154,8 @@ class TicketController extends Controller
             'screenshots.*' => [Rule::in(Screenshots::KINDS)],
             'pull_request' => ['sometimes', 'boolean'],
             'pull_request_provider' => ['sometimes', 'nullable', 'string', 'max:40'],
+            'assignee' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'destination' => ['sometimes', 'nullable', 'string', 'max:120'],
         ]);
 
         $user = $this->alfred->user($request);
@@ -113,6 +172,18 @@ class TicketController extends Controller
                 ? "The tracker \"{$data['tracker']}\" is not set up here."
                 : 'No ticket tracker is set up. Set ALFRED_TICKETS and its settings, or copy the ticket text instead.'], 422);
         }
+        $assignee = $data['assignee'] ?? null;
+        $destination = $data['destination'] ?? null;
+        try {
+            $allowed = $this->planning->allows($tracker, $assignee, $destination);
+        } catch (TrackerException $e) {
+            report($e);
+            $allowed = false;
+        }
+        if (! $allowed) {
+            return response()->json(['message' => "That assignee or {$this->destinationNoun($tracker)} is not available in {$tracker->label()} any more. Pick again, or leave them empty."], 422);
+        }
+
         // One ticket per change, even when two people press "Create" at once:
         // claim it under a lock and re-check what's stored before creating.
         $lock = Cache::store()->getStore() instanceof LockProvider
@@ -130,7 +201,7 @@ class TicketController extends Controller
 
             $kinds = array_values(array_intersect((array) ($data['screenshots'] ?? []), $this->screenshots->kinds($change)));
             $includeDiff = (bool) ($data['include_diff'] ?? config('alfred.tickets.include_diff', true));
-            $ticket = $builder->ticket($change, $data['title'], $data['description'], $includeDiff, $kinds);
+            $ticket = $builder->ticket($change, $data['title'], $data['description'], $includeDiff, $kinds, $assignee, $destination);
 
             try {
                 $result = $tracker->create($ticket);
@@ -185,6 +256,11 @@ class TicketController extends Controller
         }
 
         return ['provider' => $change->ticket_provider, 'label' => $label, 'key' => $change->ticket_key, 'url' => $change->ticket_url];
+    }
+
+    protected function destinationNoun(Tracker $tracker): string
+    {
+        return $tracker instanceof Plannable ? strtolower($tracker->destinationLabel()) : 'sprint';
     }
 
     protected function opener(): PullRequestOpener
