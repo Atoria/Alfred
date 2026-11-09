@@ -68,8 +68,10 @@ class Adf
     public static function markdown(string $text): array
     {
         $out = [];
+        /** @var list<string> $para */
         $para = [];
-        $list = null; // ['ordered' => bool, 'items' => string[]]
+        /** @var array{ordered: bool, items: list<string>}|null $list */
+        $list = null;
         $flushPara = function () use (&$para, &$out) {
             if ($para !== []) {
                 array_push($out, ...self::paragraphs(implode("\n", $para)));
