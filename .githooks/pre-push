@@ -1,0 +1,23 @@
+#!/bin/sh
+# Runs the same style and static-analysis checks as the CI "quality" job
+# before anything is pushed. Enable once per clone: composer hooks:install
+# Skip in an emergency: git push --no-verify
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+if [ ! -x vendor/bin/pint ] || [ ! -x vendor/bin/phpstan ]; then
+    echo "pre-push: vendor/bin/pint or vendor/bin/phpstan missing; run composer install first." >&2
+    exit 1
+fi
+
+echo "pre-push: Pint"
+if ! vendor/bin/pint --test; then
+    echo "pre-push: style issues found. Run 'composer format', commit, and push again." >&2
+    exit 1
+fi
+
+echo "pre-push: Larastan"
+if ! vendor/bin/phpstan analyse --memory-limit=1G --no-progress; then
+    echo "pre-push: Larastan found errors. Fix them, commit, and push again." >&2
+    exit 1
+fi

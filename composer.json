@@ -80,7 +80,12 @@
         "test": "phpunit",
         "analyse": "phpstan analyse --memory-limit=1G",
         "format": "pint",
-        "format:test": "pint --test"
+        "format:test": "pint --test",
+        "check": [
+            "@format:test",
+            "@analyse"
+        ],
+        "hooks:install": "git config core.hooksPath .githooks"
     },
     "config": {
         "sort-packages": true

@@ -96,7 +96,7 @@ class Adf
             } elseif (preg_match('/^(#{1,6})\s+(.+)$/', $trimmed, $m)) {
                 $flushPara();
                 $flushList();
-                $out[] = self::heading(trim($m[2], " #"), max(2, min(4, strlen($m[1]))));
+                $out[] = self::heading(trim($m[2], ' #'), max(2, min(4, strlen($m[1]))));
             } elseif (preg_match('/^(?:[-*•]|(\d+)[.)])\s+(.+)$/u', $trimmed, $m)) {
                 $flushPara();
                 $ordered = $m[1] !== '';

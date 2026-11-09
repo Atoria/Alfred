@@ -10,6 +10,7 @@
 
 # Not shipped in the Composer dist archive (docs live on GitHub).
 /.github               export-ignore
+/.githooks             export-ignore
 /.phpunit.cache        export-ignore
 /docs                  export-ignore
 /site                  export-ignore

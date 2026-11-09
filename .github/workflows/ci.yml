@@ -171,6 +171,7 @@ jobs:
           for path in \
             'tests/' \
             '.github/' \
+            '.githooks/' \
             'docs/' \
             'phpunit.xml.dist' \
             'phpstan.neon.dist' \
